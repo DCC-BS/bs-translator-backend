@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from bs_translator_backend.container import Container
-from bs_translator_backend.routers import translation_route
+from bs_translator_backend.routers import translation_route, convert_route
 from bs_translator_backend.utils.load_env import load_env
 from bs_translator_backend.utils.logger import get_logger, init_logger
 
@@ -27,7 +27,7 @@ def create_app() -> FastAPI:
     # Set up dependency injection container
     logger.debug("Configuring dependency injection container")
     container = Container()
-    container.wire(modules=[translation_route])
+    container.wire(modules=[translation_route, convert_route])
     container.check_dependencies()
     logger.info("Dependency injection configured")
 
@@ -48,6 +48,7 @@ def create_app() -> FastAPI:
     # Include routers
     logger.debug("Registering API routers")
     app.include_router(translation_route.create_router())
+    app.include_router(convert_route.create_router())
     logger.info("All routers registered")
 
     logger.info("API setup complete")

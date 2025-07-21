@@ -1,13 +1,13 @@
 from pydantic import BaseModel, Field
 
-from bs_translator_backend.models.langugage import Language
+from bs_translator_backend.models.langugage import Language, LanguageOrAuto
 
 
 class TranslationConfig(BaseModel):
     """Configuration class for translation parameters"""
 
     target_language: Language = Field(default=Language.DE, description="Target language for translation")
-    source_language: Language | None = Field(default=None, description="Source language (auto-detected if None)")
+    source_language: LanguageOrAuto | None = Field(default=None, description="Source language (auto-detected if None)")
     domain: str | None = Field(default=None, description="Domain or subject area for translation")
     tone: str | None = Field(default=None, description="Tone or style for translation")
     glossary: str | None = Field(default=None, description="Custom glossary or terminology")

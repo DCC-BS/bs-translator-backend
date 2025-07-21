@@ -79,6 +79,7 @@ class QwenVllm(CustomLLM):
             top_p=0.8,
             temperature=0.7,
             extra_body={"top_k": 20},
+            max_tokens=8_000,
         )
 
         choice = completion.choices[0]
@@ -127,6 +128,7 @@ class QwenVllm(CustomLLM):
             temperature=0.7,
             extra_body={"top_k": 20},
             stream=True,
+            max_tokens=8_000,
         )
 
         for chunk in stream:

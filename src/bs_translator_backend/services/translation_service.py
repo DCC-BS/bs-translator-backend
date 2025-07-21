@@ -1,8 +1,12 @@
+from collections.abc import Generator
+from typing import final
+
 from llama_index.core import PromptTemplate
 
-from bs_translator_backend.models.langugage import Language
+from bs_translator_backend.models.langugage import DetectLanguage, Language
 from bs_translator_backend.models.translation_config import TranslationConfig
 from bs_translator_backend.services.llm_facade import LLMFacade
+from bs_translator_backend.services.text_chunk_service import TextChunkService
 from bs_translator_backend.utils.language_detection import detect_language
 
 SYSTEM_MESSAGE = """You are an expert translator.
@@ -21,9 +25,11 @@ Requirements:
 """
 
 
+@final
 class TranslationService:
-    def __init__(self, llm_facade: LLMFacade):
+    def __init__(self, llm_facade: LLMFacade, text_chunk_service: TextChunkService):
         self.llm_facade = llm_facade
+        self.text_chunk_service = text_chunk_service
 
     def _create_user_message(self, text: str, config: TranslationConfig) -> str:
         """Creates the user message for the chat API"""
@@ -52,25 +58,44 @@ class TranslationService:
             text=text,
         )
 
-    def translate_text(self, text: str, config: TranslationConfig) -> str:
+    def translate_text(self, text: str, config: TranslationConfig) -> Generator[str, None, None]:
         """Base translation method"""
         if not text.strip() or len(text.strip()) == 1:
-            return text
+            yield text
 
-        if not config.source_language:
+        if not config.source_language or config.source_language == DetectLanguage.AUTO:
             config.source_language = detect_language(text).unwrap()
 
         endswith_r = text.endswith("\r")
 
-        # Call the chat API
-        response = self.llm_facade.complete(
-            PromptTemplate("{system_message} {user_message}").format(
-                system_message=SYSTEM_MESSAGE,
-                user_message=self._create_user_message(text, config),
-            ),
-        )
+        text_chunks = self.text_chunk_service.chunk_text(text)
 
-        return response + ("\r" if endswith_r else "")
+        for text_chunk in text_chunks:
+            print(f"Translating chunk: {text_chunk[:50]}...")  # Debugging output
+
+            translated_chunks = self.llm_facade.stream_complete(
+                PromptTemplate("{system_message} {user_message}").format(
+                    system_message=SYSTEM_MESSAGE,
+                    user_message=self._create_user_message(text_chunk, config),
+                ),
+            )
+
+            at_the_beginning = True
+
+            for text_chunk in translated_chunks:
+                if at_the_beginning and text_chunk.strip() == "":
+                    continue
+
+                at_the_beginning = False
+
+                # Replace '\n' with '\r\n' to preserve line breaks
+                text_chunk = text_chunk.replace("\n", "\r\n").replace("ß", "ss")
+
+                yield text_chunk
+
+        # If the last chunk ends with a newline, preserve it
+        if endswith_r:
+            yield "\r"
 
     def get_supported_languages(self) -> list[str]:
         """Returns a list of supported languages for translation"""

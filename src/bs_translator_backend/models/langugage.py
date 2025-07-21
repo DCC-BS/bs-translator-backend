@@ -62,21 +62,8 @@ class Language(Enum):
     ZH_TW = "zh-tw"
 
 
-class DetectLanguage:
-    """Class representing automatic language detection.
-
-    This class serves as a marker type for automatic language detection
-    in translation operations. When used in Pydantic models, it indicates
-    that the language should be automatically detected rather than specified.
-    """
-
-    @override
-    def __str__(self) -> str:
-        return "detect_language"
-
-    @override
-    def __repr__(self) -> str:
-        return "DetectLanguage()"
+class DetectLanguage(Enum):
+    AUTO = "auto"
 
 
 # Type alias for Pydantic compatibility - accepts Language enum or DetectLanguage class
