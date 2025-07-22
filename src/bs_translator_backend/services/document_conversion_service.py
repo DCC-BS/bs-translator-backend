@@ -12,7 +12,6 @@ from docling.datamodel.pipeline_options import (
 from docling.document_converter import (
     DocumentConverter,
     ExcelFormatOption,
-    ImageFormatOption,
     PdfFormatOption,
     WordFormatOption,
 )

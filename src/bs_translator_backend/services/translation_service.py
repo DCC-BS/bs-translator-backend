@@ -82,6 +82,8 @@ class TranslationService:
 
             at_the_beginning = True
 
+            r = ""
+
             for text_chunk in translated_chunks:
                 if at_the_beginning and text_chunk.strip() == "":
                     continue
@@ -91,7 +93,11 @@ class TranslationService:
                 # Replace '\n' with '\r\n' to preserve line breaks
                 text_chunk = text_chunk.replace("\n", "\r\n").replace("ß", "ss")
 
+                r += text_chunk
+
                 yield text_chunk
+
+            print(f"Final translation: {r}")
 
         # If the last chunk ends with a newline, preserve it
         if endswith_r:
