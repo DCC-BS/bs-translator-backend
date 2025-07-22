@@ -76,6 +76,8 @@ class DocumentConversionService:
 
         image_tag = "<<IMG>>"
 
+        httml = result.document.export_to_html()
+
         markdown = result.document.export_to_markdown(
             image_placeholder=image_tag,
         ).strip()
