@@ -1,5 +1,6 @@
 from io import BytesIO
 from typing import final
+from uuid import RESERVED_FUTURE
 
 from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
 from docling.datamodel.base_models import InputFormat
@@ -17,6 +18,10 @@ from docling.document_converter import (
 )
 from docling_core.types.io import DocumentStream
 from fastapi import UploadFile
+from PIL import Image
+from PIL.Image import Image
+
+from bs_translator_backend.models.conversion_result import ConversionResult
 
 
 def create_converter() -> DocumentConverter:
@@ -66,7 +71,7 @@ class DocumentConversionService:
     def __init__(self):
         self.converter = create_converter()
 
-    def convert(self, file: UploadFile) -> str:
+    def convert(self, file: UploadFile) -> ConversionResult:
         document_stream = DocumentStream(
             name=file.filename if file.filename else "uploaded_document",
             stream=BytesIO(file.file.read()),
@@ -76,13 +81,22 @@ class DocumentConversionService:
 
         image_tag = "<<IMG>>"
 
-        httml = result.document.export_to_html()
+        images: dict[int, Image] = {} 
 
         markdown = result.document.export_to_markdown(
             image_placeholder=image_tag,
         ).strip()
 
         for i, picture in enumerate(result.document.pictures):
-            markdown = markdown.replace(image_tag, f"![{picture.caption_text(result.document)}](./img{i + 1}.png)", 1)
+            img_name = f"img{i + 1}.png"
 
-        return markdown
+            markdown = markdown.replace(image_tag, f"![{img_name}]({img_name})", 1)
+
+            img = picture.get_image(result.document)
+            if img is not None:
+                images[i + 1] = img
+
+        return ConversionResult(
+            markdown=markdown,
+            images=images
+        )
