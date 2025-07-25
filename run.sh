@@ -5,8 +5,11 @@ set -e
 DEV_MODE=false
 PORT=8000
 
-source .env
-
+if [ -f .env ]; then
+    # Load environment variables from .env file
+    source .env
+    fi
+    
 # Function to display help information
 show_help() {
     echo "Usage: $0 [options]"

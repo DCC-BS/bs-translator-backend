@@ -16,4 +16,4 @@ RUN uv sync --frozen
 
 ENV ENVIRONMENT=production
 
-ENTRYPOINT ["/app/run.sh", "--port", ${PORT}]
+ENTRYPOINT /app/run.sh --port ${PORT}
