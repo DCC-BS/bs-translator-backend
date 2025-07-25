@@ -1,7 +1,7 @@
 services:
   vllm_qwen3_32B:
     platform: linux/amd64
-    image: vllm/vllm-openai:v0.9.2
+    image: vllm/vllm-openai:v0.10.0
     container_name: vllm_qwen3_32B
     ports:
       - ${LLM_API_PORT}:8000
