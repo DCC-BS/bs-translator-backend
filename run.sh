@@ -8,8 +8,8 @@ PORT=8000
 if [ -f .env ]; then
     # Load environment variables from .env file
     source .env
-    fi
-    
+fi
+
 # Function to display help information
 show_help() {
     echo "Usage: $0 [options]"
@@ -42,16 +42,16 @@ while [[ "$#" -gt 0 ]]; do
                 show_help
                 exit 1
             fi
-            PORT="$2"; shift 2 ;;
+        PORT="$2"; shift 2 ;;
         --help)
             show_help
             exit 0
-            ;;
+        ;;
         *)
             echo "Error: Unknown parameter: $1"
             show_help
             exit 1
-            ;;
+        ;;
     esac
 done
 
