@@ -26,5 +26,4 @@ services:
       --enable-auto-tool-choice
       --tool-call-parser hermes
       --tensor-parallel-size 2
-      --enable-reasoning
-      --reasoning-parser deepseek_r1
+      --reasoning-parser qwen3
