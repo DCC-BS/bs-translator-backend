@@ -17,7 +17,6 @@ from docling.document_converter import (
 )
 from docling_core.types.io import DocumentStream
 from fastapi import UploadFile
-from PIL import Image
 from PIL.Image import Image
 
 from bs_translator_backend.models.conversion_result import ConversionResult

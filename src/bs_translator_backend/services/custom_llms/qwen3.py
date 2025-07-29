@@ -26,7 +26,7 @@ class QwenVllm(CustomLLM):
     config: AppConfig
     last_log: str = Field(default="", description="Last log message")
 
-    def __init__(self, config: AppConfig, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, config: AppConfig) -> None:
         """
         Initialize QwenVllm with the given configuration.
 
@@ -41,13 +41,14 @@ class QwenVllm(CustomLLM):
         )
 
         # Call the superclass __init__ first to ensure all base attributes are initialized
-        super().__init__(config=config, client=client, *args, **kwargs)
+        super().__init__(config=config, client=client)
 
-        print(f"""VLLM client initialized:
+        print(f"""VLLM client initialized, *args: Any, **kwargs: Any:
               url: {self.config.openai_api_base_url}
               key: {self.config.openai_api_key}""")
 
     @property
+    @override
     def metadata(self) -> LLMMetadata:
         """Get LLM metadata."""
         return LLMMetadata(model_name=self.config.llm_model, is_chat_model=True, is_function_calling_model=False)

@@ -121,5 +121,5 @@ def get_logger(name: str | None = None) -> BoundLogger:
         A bound logger instance for structured logging
     """
     if name:
-        return structlog.get_logger(name)  # type: ignore
-    return structlog.get_logger()  # type: ignore
+        return structlog.get_logger(name)  # pyright: ignore[reportAny]
+    return structlog.get_logger()  # pyright: ignore[reportAny]
