@@ -5,8 +5,8 @@ import zipfile
 
 from lxml import etree as ET
 
-from bs_translator_backend.translator.config import TranslationConfig
 from bs_translator_backend.translator.base_translator import BaseTranslator
+from bs_translator_backend.translator.config import TranslationConfig
 
 
 class DocxTranslator(BaseTranslator):
@@ -25,9 +25,7 @@ class DocxTranslator(BaseTranslator):
         for prefix, uri in self.namespaces.items():
             ET.register_namespace(prefix, uri)
 
-    def translate(
-        self, input_path: str, output_path: str, config: TranslationConfig
-    ) -> None:
+    def translate(self, input_path: str, output_path: str, config: TranslationConfig) -> None:
         """Translates a DOCX file"""
         temp_dir = tempfile.mkdtemp()
         try:
@@ -107,9 +105,7 @@ class DocxTranslator(BaseTranslator):
                     # Translate and clear accumulated text if we have any
                     if current_text and current_elem is not None:
                         combined_text = "".join(current_text)
-                        current_elem.text = self.translate_text(
-                            text=combined_text, config=config
-                        )
+                        current_elem.text = self.translate_text(text=combined_text, config=config)
                         previous_translation = current_elem.text
                         config.context = previous_translation
 
@@ -121,9 +117,7 @@ class DocxTranslator(BaseTranslator):
             # Handle the last group of text
             if current_text and current_elem is not None:
                 combined_text = "".join(current_text)
-                current_elem.text = self.translate_text(
-                    text=combined_text, config=config
-                )
+                current_elem.text = self.translate_text(text=combined_text, config=config)
 
         # Write the modified XML back to file
         tree.write(xml_path, xml_declaration=True, encoding="UTF-8", method="xml")

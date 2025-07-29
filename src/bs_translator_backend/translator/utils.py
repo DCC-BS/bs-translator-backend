@@ -2,22 +2,23 @@ from langdetect import LangDetectException, detect
 
 
 def detect_language(text: str) -> str:
-    """Detect the language of the text. 
-    If it is not possible to detect the language, 
+    """Detect the language of the text.
+    If it is not possible to detect the language,
     return an empty string and let the llm handle the problem itself."""
     try:
         return detect(text)
     except LangDetectException:
         return ""
 
+
 def is_rtl_language(text):
-    rtl_languages = {'ar', 'he', 'fa', 'ur'}
+    rtl_languages = {"ar", "he", "fa", "ur"}
     try:
         detected_lang = detect(text)
         return detected_lang in rtl_languages
     except:
         return False
-    
+
 
 TONE_MAPPING = {
     "Keiner": None,

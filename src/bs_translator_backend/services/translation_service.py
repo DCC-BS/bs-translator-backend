@@ -1,3 +1,11 @@
+"""
+Translation Service Module
+
+This module provides the core translation functionality for the BS Translator Backend.
+It handles text translation using LLM models with customizable parameters including
+tone, domain, glossary, and context settings.
+"""
+
 from collections.abc import Generator
 from typing import final
 
@@ -27,6 +35,17 @@ Requirements:
 
 @final
 class TranslationService:
+    """
+    Service for handling text translation with AI models.
+
+    This service provides high-quality text translation capabilities using
+    large language models with support for:
+    - Automatic language detection
+    - Customizable translation parameters (tone, domain, glossary, context)
+    - Text chunking for large documents
+    - Streaming translation responses
+    """
+
     def __init__(self, llm_facade: LLMFacade, text_chunk_service: TextChunkService):
         self.llm_facade = llm_facade
         self.text_chunk_service = text_chunk_service

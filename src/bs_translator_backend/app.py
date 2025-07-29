@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from bs_translator_backend.container import Container
-from bs_translator_backend.routers import translation_route, convert_route
+from bs_translator_backend.routers import convert_route, translation_route
 from bs_translator_backend.utils.load_env import load_env
 from bs_translator_backend.utils.logger import get_logger, init_logger
 
@@ -10,15 +10,27 @@ from bs_translator_backend.utils.logger import get_logger, init_logger
 def create_app() -> FastAPI:
     """
     Create and configure the FastAPI application.
+
+    This function initializes the FastAPI application with:
+    - Environment variables loading
+    - Logging configuration
+    - Dependency injection container setup
+    - CORS middleware configuration
+    - API route registration
+
+    Returns:
+        FastAPI: Configured FastAPI application instance
     """
 
     load_env()
     init_logger()
 
     app = FastAPI(
-        title="Text Mate API",
-        description="API for text correction, rewriting, and other text-related services",
+        title="BS Translator API",
+        description="API for text translation and document conversion services with AI-powered language processing",
         version="0.1.0",
+        docs_url="/docs",
+        redoc_url="/redoc",
     )
 
     logger = get_logger("app")

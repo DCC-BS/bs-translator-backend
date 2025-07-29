@@ -1,4 +1,4 @@
-# bs-translator-backend
+# BS Translator Backend
 
 [![Release](https://img.shields.io/github/v/release/DCC-BS/bs-translator-backend)](https://img.shields.io/github/v/release/DCC-BS/bs-translator-backend)
 [![Build status](https://img.shields.io/github/actions/workflow/status/DCC-BS/bs-translator-backend/main.yml?branch=main)](https://github.com/DCC-BS/bs-translator-backend/actions/workflows/main.yml?query=branch%3Amain)
@@ -6,76 +6,214 @@
 [![Commit activity](https://img.shields.io/github/commit-activity/m/DCC-BS/bs-translator-backend)](https://img.shields.io/github/commit-activity/m/DCC-BS/bs-translator-backend)
 [![License](https://img.shields.io/github/license/DCC-BS/bs-translator-backend)](https://img.shields.io/github/license/DCC-BS/bs-translator-backend)
 
-This is a template repository for Python projects that use uv for their dependency management.
+BS Translator Backend is a powerful Python FastAPI service that provides advanced text translation and document conversion capabilities. This backend service enables high-quality translation of text and documents using state-of-the-art AI models with customizable translation parameters.
 
 - **Github repository**: <https://github.com/DCC-BS/bs-translator-backend/>
 - **Documentation** <https://DCC-BS.github.io/bs-translator-backend/>
 
-## Getting started with your project
+## Features
 
-#### Pre-requisites
+- **Text Translation**: High-quality text translation with customizable parameters
+- **Document Conversion**: Convert various document formats (PDF, DOCX) to markdown with image extraction
+- **Language Detection**: Automatic source language detection
+- **Customizable Translation**: Configure tone, domain, glossary, and context for translations
+- **Streaming Response**: Real-time translation output for improved user experience
+- **Multi-format Support**: Handle text, PDF, and DOCX documents
+- **Image Extraction**: Extract and encode images from documents during conversion
 
-Windows
-- Install [Git for Windows](https://git-scm.com/downloads/win)
-- Install [Scoop](https://scoop.sh/)
-- Install make: `scoop install make`
+## Technology Stack
 
-General
-- Install [VSCode](https://code.visualstudio.com/)
-- Install [uv](https://docs.astral.sh/uv/getting-started/installation/)
+- **Framework**: [FastAPI](https://fastapi.tiangolo.com/) with Python 3.12+
+- **Package Manager**: [uv](https://github.com/astral-sh/uv)
+- **Dependency Injection**: Dependency-Injector
+- **LLM Integration**: LlamaIndex for LLM model integration
+- **Document Processing**: Docling for document conversion
+- **Containerization**: Docker and Docker Compose
+- **AI Models**: vLLM for serving Qwen3 32B model
 
+## Setup
 
-### 1. Create a New Repository
+### Prerequisites
 
-First, create a repository on GitHub with the same name as this project, and then run the following commands:
+- Python 3.12+
+- uv package manager
+- Docker and Docker Compose (for containerized deployment)
+- NVIDIA GPU with CUDA support (for LLM services)
 
-```bash
-git init -b main
-git add .
-git commit -m "init commit"
-git remote add origin git@github.com:DCC-BS/bs-translator-backend.git
-git push -u origin main
+### Environment Configuration
+
+Create a `.env` file in the project root with the required environment variables:
+
+```env
+# Hugging Face Configuration
+HUGGING_FACE_HUB_TOKEN=your_hugging_face_token_here
+HUGGING_FACE_CACHE_DIR=~/.cache/huggingface
+
+# LLM Service Configuration
+LLM_API_PORT=8001
+OPENAI_API_BASE_URL=http://localhost:${LLM_API_PORT}/v1
+OPENAI_API_KEY=none
+LLM_MODEL=Qwen/Qwen3-32B-AWQ
+
+# Client Configuration
+CLIENT_PORT=3000
+CLIENT_URL=http://localhost:${CLIENT_PORT}
 ```
 
-### 2. Set Up Your Development Environment
+> **Note:** The `HUGGING_FACE_HUB_TOKEN` is required for Hugging Face API access. You can create a token [here](https://huggingface.co/settings/tokens).
 
-Then, install the environment and the pre-commit hooks with
+### Install Dependencies
+
+Install dependencies using uv:
 
 ```bash
 make install
 ```
 
-This will also generate your `uv.lock` file
+This will:
+- Create a virtual environment using uv
+- Install all dependencies
+- Install pre-commit hooks
 
-### 3. Run the pre-commit hooks
+## Development
 
-Initially, the CI/CD pipeline might be failing due to formatting issues. To resolve those run:
-
-```bash
-uv run pre-commit run -a
-```
-
-### 4. Commit the changes
-
-Lastly, commit the changes made by the two steps above to your repository.
+### Start the Development Server
 
 ```bash
-git add .
-git commit -m 'Fix formatting issues'
-git push origin main
+uv run fastapi dev ./src/bs_translator_backend/app.py
 ```
 
-You are now ready to start development on your project!
-The CI/CD pipeline will be triggered when you open a pull request, merge to main, or when you create a new release.
+### Code Quality Tools
 
-To finalize the set-up for publishing to PyPI, see [here](https://DCC-BS.github.io/cookiecutter-uv/features/publishing/#set-up-for-pypi).
-For activating the automatic documentation with MkDocs, see [here](https://DCC-BS.github.io/cookiecutter-uv/features/mkdocs/#enabling-the-documentation-on-github).
-To enable the code coverage reports, see [here](https://DCC-BS.github.io/cookiecutter-uv/features/codecov/).
+Run code quality checks:
 
-## Releasing a new version
+```bash
+# Run all quality checks
+make check
+
+# Format code with ruff
+uv run ruff format .
+
+# Run linting
+uv run ruff check .
+
+# Run type checking
+uv run basedpyright
+```
+
+## Production
+
+Run the production server:
+
+```bash
+uv run fastapi run ./src/bs_translator_backend/app.py
+```
+
+## Docker Deployment
+
+The application includes a Dockerfile and Docker Compose configuration for easy deployment with LLM services:
+
+### Using Docker Compose
+
+```bash
+# Start all services with Docker Compose
+docker compose up -d
+
+# Build and start all services
+docker compose up --build -d
+
+# View logs
+docker compose logs -f
+```
+
+The Docker Compose setup includes:
+- **vLLM Service**: Serves the Qwen3 32B model with GPU acceleration
+- **Backend API**: FastAPI application for translation services
+
+### Using Dockerfile Only
+
+```bash
+# Build the Docker image
+docker build -t bs-translator-backend .
+
+# Run the container
+docker run -p 8000:8000 bs-translator-backend
+```
+
+## Testing & Development Tools
+
+Run tests with pytest:
+
+```bash
+# Run tests
+make test
+
+# Run tests with pytest directly
+uv run python -m pytest --doctest-modules
+```
+
+## API Endpoints
+
+### Translation
+
+- **GET `/translation/languages`**: Get list of supported languages
+- **POST `/translation/text`**: Translate text with customizable parameters
+
+### Document Conversion
+
+- **POST `/convert/doc`**: Convert documents (PDF, DOCX) to markdown with image extraction
+
+### Translation Configuration
+
+The translation service supports the following customizable parameters:
+
+- **target_language**: Target language for translation
+- **source_language**: Source language (auto-detected if not specified)
+- **domain**: Domain or subject area for translation
+- **tone**: Translation tone (formal, informal, technical, neutral)
+- **glossary**: Custom glossary or terminology
+- **context**: Additional context for translation
+
+## Project Architecture
+
+```
+src/bs_translator_backend/
+├── app.py                      # FastAPI application entry point
+├── container.py                # Dependency injection container
+├── models/                     # Data models and schemas
+│   ├── app_config.py          # Application configuration
+│   ├── conversion_result.py   # Document conversion models
+│   ├── langugage.py           # Language definitions
+│   ├── translation_config.py  # Translation configuration
+│   └── translation_input.py   # Translation input models
+├── routers/                    # API endpoint definitions
+│   ├── convert_route.py       # Document conversion endpoints
+│   └── translation_route.py   # Translation endpoints
+├── services/                   # Business logic services
+│   ├── document_conversion_service.py  # Document processing
+│   ├── llm_facade.py          # LLM integration facade
+│   ├── text_chunk_service.py  # Text chunking utilities
+│   └── translation_service.py # Translation logic
+├── translator/                 # Translation implementations
+│   ├── base_translator.py     # Base translator interface
+│   ├── docx_translator.py     # DOCX document translator
+│   ├── pdf_translator.py      # PDF document translator
+│   └── text_translator.py     # Plain text translator
+└── utils/                      # Utility functions and helpers
+    ├── language_detection.py  # Language detection utilities
+    ├── load_env.py            # Environment loading
+    └── logger.py              # Logging configuration
+```
 
 
+
+## License
+
+[MIT](LICENSE) © Data Competence Center Basel-Stadt
 
 ---
+
+**Data Competence Center Basel-Stadt**  
+Developed with ❤️ by the Data Alchemy Team
 
 Repository initiated with [DCC-BS/cookiecutter-uv](https://github.com/DCC-BS/cookiecutter-uv).

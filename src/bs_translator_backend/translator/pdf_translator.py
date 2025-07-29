@@ -76,14 +76,14 @@
 #                         align=alignment,
 #                     )
 #                     text_writer.write_text(current_fitz_page)
-                    
+
 #                     if not_written_lines:
 #                         additional_v_space = 0
 #                         not_written_text = ""
 #                         for text, text_length in not_written_lines:
 #                             additional_v_space += line_spacing + fontsize + line_spacing
 #                             not_written_text += text
-                        
+
 #                         if additional_v_space > 0:
 #                             additional_v_space -= line_spacing # Remove the last line spacing
 #                             additional_v_space += font.ascender * 1.2

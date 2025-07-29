@@ -1,68 +1,89 @@
+"""
+Language Definition Models
+
+This module defines the supported languages for translation services
+and related language detection functionality.
+"""
+
 from __future__ import annotations
 
 from enum import Enum
-from typing import override
 
 
 class Language(Enum):
-    AF = "af"
-    AR = "ar"
-    BG = "bg"
-    BN = "bn"
-    CA = "ca"
-    CS = "cs"
-    CY = "cy"
-    DA = "da"
-    DE = "de"
-    EL = "el"
-    EN = "en"
-    ES = "es"
-    ET = "et"
-    FA = "fa"
-    FI = "fi"
-    FR = "fr"
-    GU = "gu"
-    HE = "he"
-    HI = "hi"
-    HR = "hr"
-    HU = "hu"
-    ID = "id"
-    IT = "it"
-    JA = "ja"
-    KN = "kn"
-    KO = "ko"
-    LT = "lt"
-    LV = "lv"
-    MK = "mk"
-    ML = "ml"
-    MR = "mr"
-    NE = "ne"
-    NL = "nl"
-    NO = "no"
-    PA = "pa"
-    PL = "pl"
-    PT = "pt"
-    RO = "ro"
-    RU = "ru"
-    SK = "sk"
-    SL = "sl"
-    SO = "so"
-    SQ = "sq"
-    SV = "sv"
-    SW = "sw"
-    TA = "ta"
-    TE = "te"
-    TH = "th"
-    TL = "tl"
-    TR = "tr"
-    UK = "uk"
-    UR = "ur"
-    VI = "vi"
-    ZH_CN = "zh-cn"
-    ZH_TW = "zh-tw"
+    """
+    Enumeration of supported languages for translation.
+
+    Each language is represented by its ISO 639-1 language code.
+    This enum provides a comprehensive list of languages supported
+    by the translation service.
+    """
+
+    AF = "af"  # Afrikaans
+    AR = "ar"  # Arabic
+    BG = "bg"  # Bulgarian
+    BN = "bn"  # Bengali
+    CA = "ca"  # Catalan
+    CS = "cs"  # Czech
+    CY = "cy"  # Welsh
+    DA = "da"  # Danish
+    DE = "de"  # German
+    EL = "el"  # Greek
+    EN = "en"  # English
+    ES = "es"  # Spanish
+    ET = "et"  # Estonian
+    FA = "fa"  # Persian
+    FI = "fi"  # Finnish
+    FR = "fr"  # French
+    GU = "gu"  # Gujarati
+    HE = "he"  # Hebrew
+    HI = "hi"  # Hindi
+    HR = "hr"  # Croatian
+    HU = "hu"  # Hungarian
+    ID = "id"  # Indonesian
+    IT = "it"  # Italian
+    JA = "ja"  # Japanese
+    KN = "kn"  # Kannada
+    KO = "ko"  # Korean
+    LT = "lt"  # Lithuanian
+    LV = "lv"  # Latvian
+    MK = "mk"  # Macedonian
+    ML = "ml"  # Malayalam
+    MR = "mr"  # Marathi
+    NE = "ne"  # Nepali
+    NL = "nl"  # Dutch
+    NO = "no"  # Norwegian
+    PA = "pa"  # Punjabi
+    PL = "pl"  # Polish
+    PT = "pt"  # Portuguese
+    RO = "ro"  # Romanian
+    RU = "ru"  # Russian
+    SK = "sk"  # Slovak
+    SL = "sl"  # Slovenian
+    SO = "so"  # Somali
+    SQ = "sq"  # Albanian
+    SV = "sv"  # Swedish
+    SW = "sw"  # Swahili
+    TA = "ta"  # Tamil
+    TE = "te"  # Telugu
+    TH = "th"  # Thai
+    TL = "tl"  # Filipino
+    TR = "tr"  # Turkish
+    UK = "uk"  # Ukrainian
+    UR = "ur"  # Urdu
+    VI = "vi"  # Vietnamese
+    ZH_CN = "zh-cn"  # Chinese (Simplified)
+    ZH_TW = "zh-tw"  # Chinese (Traditional)
 
 
 class DetectLanguage(Enum):
+    """
+    Enumeration for automatic language detection.
+
+    This enum provides the option to automatically detect
+    the source language of the input text.
+    """
+
     AUTO = "auto"
 
 

@@ -1,17 +1,10 @@
 from .base_translator import BaseTranslator
-from .text_translator import TextTranslator
+from .config import LLMConfig, TranslationConfig
 from .docx_translator import DocxTranslator
 from .pdf_translator import PdfTranslator
-from .config import LLMConfig, TranslationConfig
+from .text_translator import TextTranslator
 
-__all__ = [
-    'BaseTranslator',
-    'TextTranslator',
-    'DocxTranslator',
-    'LLMConfig',
-    'TranslationConfig',
-    'PdfTranslator'
-]
+__all__ = ["BaseTranslator", "DocxTranslator", "LLMConfig", "PdfTranslator", "TextTranslator", "TranslationConfig"]
 
 # Version of the translator package
-__version__ = '1.0.0'
+__version__ = "1.0.0"

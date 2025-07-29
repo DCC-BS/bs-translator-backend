@@ -1,9 +1,7 @@
-import ssl
 from abc import ABC, abstractmethod
-from typing import List, Optional
 
 import httpx
-from openai import Client, OpenAIError
+from openai import Client
 from openai.types.chat import ChatCompletionMessageParam
 
 from bs_translator_backend.translator.config import LLMConfig, TranslationConfig
@@ -57,7 +55,7 @@ Glossary: {glossary_prompt}
 Text to translate:
 {text}"""
 
-    def _get_tone_prompt(self, tone: Optional[str], domain: Optional[str]) -> str:
+    def _get_tone_prompt(self, tone: str | None, domain: str | None) -> str:
         """Generates the tone-specific part of the prompt"""
         if tone is None:
             return "Use a neutral tone that is objective, informative, and unbiased."
@@ -69,11 +67,11 @@ Text to translate:
         }
         return tone_prompts.get(tone.lower(), "Use a neutral tone.")
 
-    def _get_domain_prompt(self, domain: Optional[str]) -> str:
+    def _get_domain_prompt(self, domain: str | None) -> str:
         """Generates the domain-specific part of the prompt"""
         return f"Use terminology specific to the {domain} field." if domain else "No specific domain requirements."
 
-    def _get_glossary_prompt(self, glossary: Optional[str]) -> str:
+    def _get_glossary_prompt(self, glossary: str | None) -> str:
         """Generates the glossary-specific part of the prompt"""
         if glossary is None:
             return "No specific glossary provided."

@@ -1,6 +1,5 @@
 from io import BytesIO
 from typing import final
-from uuid import RESERVED_FUTURE
 
 from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
 from docling.datamodel.base_models import InputFormat
@@ -81,7 +80,7 @@ class DocumentConversionService:
 
         image_tag = "<<IMG>>"
 
-        images: dict[int, Image] = {} 
+        images: dict[int, Image] = {}
 
         markdown = result.document.export_to_markdown(
             image_placeholder=image_tag,
@@ -96,7 +95,4 @@ class DocumentConversionService:
             if img is not None:
                 images[i + 1] = img
 
-        return ConversionResult(
-            markdown=markdown,
-            images=images
-        )
+        return ConversionResult(markdown=markdown, images=images)
