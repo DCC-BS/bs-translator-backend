@@ -1,15 +1,9 @@
 # BS Translator Backend
 
-[![Release](https://img.shields.io/github/v/release/DCC-BS/bs-translator-backend)](https://img.shields.io/github/v/release/DCC-BS/bs-translator-backend)
-[![Build status](https://img.shields.io/github/actions/workflow/status/DCC-BS/bs-translator-backend/main.yml?branch=main)](https://github.com/DCC-BS/bs-translator-backend/actions/workflows/main.yml?query=branch%3Amain)
-[![codecov](https://codecov.io/gh/DCC-BS/bs-translator-backend/branch/main/graph/badge.svg)](https://codecov.io/gh/DCC-BS/bs-translator-backend)
-[![Commit activity](https://img.shields.io/github/commit-activity/m/DCC-BS/bs-translator-backend)](https://img.shields.io/github/commit-activity/m/DCC-BS/bs-translator-backend)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License](https://img.shields.io/github/license/DCC-BS/bs-translator-backend)](https://img.shields.io/github/license/DCC-BS/bs-translator-backend)
 
 BS Translator Backend is a powerful Python FastAPI service that provides advanced text translation and document conversion capabilities. This backend service enables high-quality translation of text and documents using state-of-the-art AI models with customizable translation parameters.
-
-- **Github repository**: <https://github.com/DCC-BS/bs-translator-backend/>
-- **Documentation** <https://DCC-BS.github.io/bs-translator-backend/>
 
 ## Features
 
@@ -213,7 +207,7 @@ src/bs_translator_backend/
 
 ---
 
-**Data Competence Center Basel-Stadt**  
-Developed with ❤️ by the Data Alchemy Team
+<a href="https://www.bs.ch/schwerpunkte/daten/databs/schwerpunkte/datenwissenschaften-und-ki"><img src="https://github.com/DCC-BS/.github/blob/main/_imgs/databs_log.png?raw=true" alt="DCC Logo" width="200" /></a>
 
-Repository initiated with [DCC-BS/cookiecutter-uv](https://github.com/DCC-BS/cookiecutter-uv).
+**Datenwissenschaften und KI**  
+Developed with ❤️ by Data Alchemy Team
