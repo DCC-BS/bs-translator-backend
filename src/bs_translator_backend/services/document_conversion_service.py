@@ -20,6 +20,7 @@ from fastapi import UploadFile
 from PIL.Image import Image
 
 from bs_translator_backend.models.conversion_result import ConversionResult
+from bs_translator_backend.services.image_reader_serivice import ImageReaderService
 
 
 def create_converter() -> DocumentConverter:
@@ -68,8 +69,13 @@ def create_converter() -> DocumentConverter:
 class DocumentConversionService:
     def __init__(self):
         self.converter = create_converter()
+        self.image_reader = ImageReaderService()
 
     def convert(self, file: UploadFile) -> ConversionResult:
+        if file.content_type is not None and file.content_type.startswith("image/"):
+            markdown = self.image_reader.read_image(file)
+            return ConversionResult(markdown=markdown, images={})
+
         document_stream = DocumentStream(
             name=file.filename if file.filename else "uploaded_document",
             stream=BytesIO(file.file.read()),
