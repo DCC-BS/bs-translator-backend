@@ -9,6 +9,13 @@ class AppConfig:
         self.language_tool_api_url: str = os.getenv("LANGUAGE_TOOL_API_URL", "http://localhost:8010/")
         self.client_url: str = os.getenv("CLIENT_URL", "http://localhost:3000")
 
+        hmac_secret = os.getenv("HMAC_SECRET")
+
+        if hmac_secret is None:
+            raise ValueError("HMAC_SECRET environment variable is not set. Please set it to a valid value.")  # noqa: TRY003
+        else:
+            self.hmac_secret: str = hmac_secret
+
     def __str__(self) -> str:
         return f"""
         AppConfig(
@@ -16,5 +23,7 @@ class AppConfig:
             openai_api_base_url={self.openai_api_base_url},
             openai_api_key={self.openai_api_key},
             llm_model={self.llm_model},
-            language_tool_api_url={self.language_tool_api_url})
+            language_tool_api_url={self.language_tool_api_url},
+            hmac_secret={self.hmac_secret}
+        )
         """

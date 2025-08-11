@@ -90,8 +90,6 @@ class TranslationService:
         text_chunks = self.text_chunk_service.chunk_text(text)
 
         for text_chunk in text_chunks:
-            print(f"Translating chunk: {text_chunk[:50]}...")  # Debugging output
-
             translated_chunks = self.llm_facade.stream_complete(
                 PromptTemplate("{system_message} {user_message}").format(
                     system_message=SYSTEM_MESSAGE,
@@ -115,8 +113,6 @@ class TranslationService:
                 r += text_chunk
 
                 yield text_chunk
-
-            print(f"Final translation: {r}")
 
         # If the last chunk ends with a newline, preserve it
         if endswith_r:

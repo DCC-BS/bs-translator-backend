@@ -14,7 +14,6 @@ def detect_language(text: str) -> ResultE[Language]:
     return detect_language_str(text).bind(map_to_language)
 
 
-@safe
 def detect_language_str(text: str) -> str:
     """Detect the language of the given text.
 
