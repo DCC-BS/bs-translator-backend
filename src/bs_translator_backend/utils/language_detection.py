@@ -11,7 +11,7 @@ def detect_language(text: str) -> ResultE[Language]:
         except KeyError:
             return Failure(Exception(f"Unknown language code: {code}"))
 
-    return detect_language_str(text).bind(map_to_language)
+    return map_to_language(detect_language_str(text))
 
 
 def detect_language_str(text: str) -> str:
