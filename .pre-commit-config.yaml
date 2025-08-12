@@ -19,8 +19,7 @@ repos:
     rev: "v0.9.9"
     hooks:
       - id: ruff
-        args: [--exit-non-zero-on-fix]
+        args: [--fix, --exit-zero]
         types_or: [ python, pyi ]
-        args: [ --fix, --exit-zero ]
       - id: ruff-format
         types_or: [ python, pyi ]

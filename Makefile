@@ -18,6 +18,16 @@ test: ## Test the code with pytest
 	@echo "🚀 Testing code: Running pytest"
 	@uv run python -m pytest --doctest-modules
 
+.PHONY: run
+run: ## Run the application
+	@echo "🚀 Running the application"
+	@uv run fastapi run ./src/bs_translator_backend/app.py --port 8000
+
+.PHONY: dev
+dev: ## Run the application in development mode
+	@echo "🚀 Running the application in development mode"
+	@uv run fastapi dev ./src/bs_translator_backend/app.py --port 8000
+
 .PHONY: build
 build: clean-build ## Build wheel file
 	@echo "🚀 Creating wheel file"
