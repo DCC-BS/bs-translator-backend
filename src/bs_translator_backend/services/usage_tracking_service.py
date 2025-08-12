@@ -1,9 +1,5 @@
 import hashlib
 import hmac
-from tokenize import PseudoExtras
-from typing import Any
-
-from httpx import get
 
 from bs_translator_backend.models.app_config import AppConfig
 from bs_translator_backend.utils.logger import get_logger

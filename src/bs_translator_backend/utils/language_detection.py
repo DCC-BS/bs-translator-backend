@@ -1,5 +1,5 @@
 from langdetect import detect
-from returns.result import Failure, ResultE, Success, safe
+from returns.result import Failure, ResultE, Success
 
 from bs_translator_backend.models.langugage import Language
 
