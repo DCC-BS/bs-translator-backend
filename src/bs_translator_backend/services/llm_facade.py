@@ -61,5 +61,7 @@ class LLMFacade:
         """
 
         sllm = self.llm.as_structured_llm(cast(type[BaseModel], response_type))
-        response: T = sllm.structured_predict(response_type, prompt, llm_kwargs=llm_kwargs, **prompt_args)
+        response: T = sllm.structured_predict(
+            response_type, prompt, llm_kwargs=llm_kwargs, **prompt_args
+        )
         return response

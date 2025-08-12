@@ -6,7 +6,7 @@ class TextChunkService:
     def __init__(self, max_tokens: int = 6_000):
         self.max_tokens = max_tokens
 
-    def chunk_text(self, text: str):
+    def chunk_text(self, text: str) -> list[str]:
         """Splits the input text into chunks of specified size."""
 
         segments: list[str] = text.split("\n")

@@ -10,13 +10,23 @@ check: ## Run code quality tools.
 	@uv lock --locked
 	@echo "🚀 Linting code: Running pre-commit"
 	@uv run pre-commit run -a
-	@echo "🚀 Static type checking: Running basedpyright"
-	@uv run basedpyright
+	@echo "🚀 Static type checking: Running mypy"
+	@uv run mypy ./src/bs_translator_backend
 
 .PHONY: test
 test: ## Test the code with pytest
 	@echo "🚀 Testing code: Running pytest"
 	@uv run python -m pytest --doctest-modules
+
+.PHONY: run
+run: ## Run the application
+	@echo "🚀 Running the application"
+	@uv run fastapi run ./src/bs_translator_backend/app.py --port 8000
+
+.PHONY: dev
+dev: ## Run the application in development mode
+	@echo "🚀 Running the application in development mode"
+	@uv run fastapi dev ./src/bs_translator_backend/app.py --port 8000
 
 .PHONY: build
 build: clean-build ## Build wheel file

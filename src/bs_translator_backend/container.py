@@ -7,6 +7,7 @@ from bs_translator_backend.services.document_conversion_service import DocumentC
 from bs_translator_backend.services.llm_facade import LLMFacade
 from bs_translator_backend.services.text_chunk_service import TextChunkService
 from bs_translator_backend.services.translation_service import TranslationService
+from bs_translator_backend.services.usage_tracking_service import UsageTrackingService
 
 
 class Container(containers.DeclarativeContainer):
@@ -33,6 +34,11 @@ class Container(containers.DeclarativeContainer):
         text_chunk_service=text_chunk_service,
     )
 
-    document_conversion_service: providers.Singleton[DocumentConversionService] = providers.Singleton(
-        DocumentConversionService
+    document_conversion_service: providers.Singleton[DocumentConversionService] = (
+        providers.Singleton(DocumentConversionService)
+    )
+
+    usage_tracking_service: providers.Singleton[UsageTrackingService] = providers.Singleton(
+        UsageTrackingService,
+        config=app_config,
     )

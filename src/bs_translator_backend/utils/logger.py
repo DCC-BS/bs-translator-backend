@@ -32,7 +32,9 @@ def setup_stdlib_logging() -> None:
         lib_logger.propagate = False
 
 
-def add_request_id(logger: BoundLogger, method_name: str, event_dict: EventDict) -> Mapping[str, Any]:
+def add_request_id(
+    logger: BoundLogger, method_name: str, event_dict: EventDict
+) -> Mapping[str, Any]:
     """
     Add a request ID to the log context if it doesn't exist.
 
@@ -49,7 +51,9 @@ def add_request_id(logger: BoundLogger, method_name: str, event_dict: EventDict)
     return event_dict
 
 
-def add_timestamp(logger: BoundLogger, method_name: str, event_dict: EventDict) -> Mapping[str, Any]:
+def add_timestamp(
+    logger: BoundLogger, method_name: str, event_dict: EventDict
+) -> Mapping[str, Any]:
     """
     Add an ISO-8601 timestamp to the log entry.
 
@@ -121,5 +125,5 @@ def get_logger(name: str | None = None) -> BoundLogger:
         A bound logger instance for structured logging
     """
     if name:
-        return structlog.get_logger(name)  # pyright: ignore[reportAny]
-    return structlog.get_logger()  # pyright: ignore[reportAny]
+        return structlog.get_logger(name)  # type: ignore[no-any-return]
+    return structlog.get_logger()  # type: ignore[no-any-return]

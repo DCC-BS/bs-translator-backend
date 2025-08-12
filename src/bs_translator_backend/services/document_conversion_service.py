@@ -30,7 +30,9 @@ def create_converter() -> DocumentConverter:
     # )
     accelerator_device: AcceleratorDevice = AcceleratorDevice.CPU
 
-    accelerator_options: AcceleratorOptions = AcceleratorOptions(num_threads=4, device=accelerator_device)
+    accelerator_options: AcceleratorOptions = AcceleratorOptions(
+        num_threads=4, device=accelerator_device
+    )
     return DocumentConverter(
         allowed_formats=[
             InputFormat.PDF,
@@ -67,7 +69,7 @@ def create_converter() -> DocumentConverter:
 
 @final
 class DocumentConversionService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.converter = create_converter()
         self.image_reader = ImageReaderService()
 

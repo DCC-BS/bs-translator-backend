@@ -154,7 +154,7 @@ class ImageReaderService:
         try:
             # Preprocess the image to handle dimension issues
             processed_path = self._preprocess_image(tmp_path)
-            
+
             # Use EasyOCR to extract text from the preprocessed image
             # EasyOCR returns a list where each element is [bbox, text, confidence]
             results = self.reader.readtext(processed_path)
