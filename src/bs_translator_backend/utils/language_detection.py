@@ -1,5 +1,5 @@
-from langdetect import detect
-from returns.result import Failure, ResultE, Success
+from langdetect import detect  # type: ignore[import]
+from returns.result import Failure, ResultE, Success, safe
 
 from bs_translator_backend.models.langugage import Language
 
@@ -11,9 +11,10 @@ def detect_language(text: str) -> ResultE[Language]:
         except KeyError:
             return Failure(Exception(f"Unknown language code: {code}"))
 
-    return map_to_language(detect_language_str(text))
+    return detect_language_str(text).bind(map_to_language)  # type: ignore[return-value]
 
 
+@safe
 def detect_language_str(text: str) -> str:
     """Detect the language of the given text.
 
@@ -23,4 +24,4 @@ def detect_language_str(text: str) -> str:
     Returns:
         The detected language code as a string
     """
-    return detect(text)
+    return detect(text)  # type: ignore[return-value]

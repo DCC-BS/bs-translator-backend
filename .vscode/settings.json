@@ -15,10 +15,10 @@
 	"python.testing.pytestEnabled": true,
 	"python.testing.unittestEnabled": false,
 	"workbench.colorCustomizations": {
-		"editorCursor.foreground": "#e9dbb7",
+		"editorCursor.foreground": "#ef857d",
 		"activityBarBadge.background": "#e9dbb7",
 		"activityBarBadge.foreground": "#262626",
-		"statusBar.background": "#262626",
+		"statusBar.background": "#9f5a51",
 		"statusBar.foreground": "#e9dbb7"
 	},
 	"github.copilot.enable": {
