@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from version_pioneer.api import get_version_dict_wo_exec
-from version_pioneer.versionscript import VersionDict
+from version_pioneer.api import get_version_dict_wo_exec  # type: ignore[import-untyped]
+from version_pioneer.versionscript import VersionDict  # type: ignore[import-untyped]
 
 
 def get_version_dict() -> VersionDict:
