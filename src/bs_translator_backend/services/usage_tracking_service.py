@@ -20,7 +20,10 @@ class UsageTrackingService:
             self.config.hmac_secret.encode("utf-8"), message, hashlib.sha256
         ).hexdigest()
         return signature
-    def log_event(self, module: str, func: str, user_id: str | None, **kwargs: str | int | float | bool | None) -> None:
+
+    def log_event(
+        self, module: str, func: str, user_id: str | None, **kwargs: str | int | float | bool | None
+    ) -> None:
         """
         Logs a usage event with the given details.
         """

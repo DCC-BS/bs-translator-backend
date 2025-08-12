@@ -46,5 +46,5 @@ jobs:
       # - name: Run tests
       #   run: uv run pytest tests
 
-      - name: Check typing
-        run: uv run basedpyright
+      # - name: Check typing
+      #   run: uv run basedpyright

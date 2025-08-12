@@ -11,7 +11,7 @@ check: ## Run code quality tools.
 	@echo "🚀 Linting code: Running pre-commit"
 	@uv run pre-commit run -a
 	@echo "🚀 Static type checking: Running basedpyright"
-	@uv run basedpyright
+	@uv run mypy ./src/bs_translator_backend
 
 .PHONY: test
 test: ## Test the code with pytest

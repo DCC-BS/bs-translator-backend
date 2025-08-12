@@ -24,7 +24,9 @@ logger = get_logger("convert_router")
 
 @inject
 def create_router(
-    document_conversion_service: DocumentConversionService = Provide[Container.document_conversion_service],
+    document_conversion_service: DocumentConversionService = Provide[
+        Container.document_conversion_service
+    ],
     usage_tracking_service: UsageTrackingService = Provide[Container.usage_tracking_service],
 ) -> APIRouter:
     """
@@ -55,10 +57,7 @@ def create_router(
         """
 
         usage_tracking_service.log_event(
-            __name__,
-            convert.__name__,
-            user_id=x_client_id,
-            file_size=file.size
+            __name__, convert.__name__, user_id=x_client_id, file_size=file.size
         )
 
         result = document_conversion_service.convert(file)

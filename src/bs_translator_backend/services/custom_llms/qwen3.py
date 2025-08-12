@@ -51,7 +51,9 @@ class QwenVllm(CustomLLM):
     @override
     def metadata(self) -> LLMMetadata:
         """Get LLM metadata."""
-        return LLMMetadata(model_name=self.config.llm_model, is_chat_model=True, is_function_calling_model=False)
+        return LLMMetadata(
+            model_name=self.config.llm_model, is_chat_model=True, is_function_calling_model=False
+        )
 
     @override
     @llm_completion_callback()
@@ -139,7 +141,11 @@ class QwenVllm(CustomLLM):
                 yield CompletionResponse(text=response, delta=content)
 
             # Handle tool calls in streaming mode
-            if chunk.choices and hasattr(chunk.choices[0].delta, "tool_calls") and chunk.choices[0].delta.tool_calls:
+            if (
+                chunk.choices
+                and hasattr(chunk.choices[0].delta, "tool_calls")
+                and chunk.choices[0].delta.tool_calls
+            ):
                 # For tool calls in streaming, we just log them but actual tool execution
                 # should be handled by the caller after the stream is complete
                 self.last_log = f"Tool call received in chunk: {chunk.model_dump_json()}"

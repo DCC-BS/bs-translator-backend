@@ -178,4 +178,3 @@ allow_untyped_globals = false
 # Package configuration
 namespace_packages = true
 explicit_package_bases = true
-

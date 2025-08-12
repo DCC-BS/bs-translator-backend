@@ -34,8 +34,8 @@ class Container(containers.DeclarativeContainer):
         text_chunk_service=text_chunk_service,
     )
 
-    document_conversion_service: providers.Singleton[DocumentConversionService] = providers.Singleton(
-        DocumentConversionService
+    document_conversion_service: providers.Singleton[DocumentConversionService] = (
+        providers.Singleton(DocumentConversionService)
     )
 
     usage_tracking_service: providers.Singleton[UsageTrackingService] = providers.Singleton(
