@@ -18,6 +18,16 @@ test: ## Test the code with pytest
 	@echo "🚀 Testing code: Running pytest"
 	@uv run python -m pytest --doctest-modules
 
+.PHONY: docker up
+docker up: ## Build and run the Docker container
+	@echo "🐳 Running docker compose"
+	@docker compose up -d
+
+.PHONY: docker down
+docker down: ## Stop and remove the Docker container
+	@echo "🐳 Stopping docker compose"
+	@docker compose down
+
 .PHONY: run
 run: ## Run the application
 	@echo "🚀 Running the application"

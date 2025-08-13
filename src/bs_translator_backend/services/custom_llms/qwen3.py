@@ -43,10 +43,6 @@ class QwenVllm(CustomLLM):
         # Call the superclass __init__ first to ensure all base attributes are initialized
         super().__init__(config=config, client=client)
 
-        print(f"""VLLM client initialized, *args: Any, **kwargs: Any:
-              url: {self.config.openai_api_base_url}
-              key: {self.config.openai_api_key}""")
-
     @property
     @override
     def metadata(self) -> LLMMetadata:
