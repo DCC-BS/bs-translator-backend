@@ -10,6 +10,10 @@ class HMACSecretNotSetError(ValueError):
         )
 
 
+def log_secret(secret: str | None) -> str:
+    return "****" if secret is not None and len(secret) > 0 else "None"
+
+
 class AppConfig:
     def __init__(self) -> None:
         self.openai_api_base_url: str = os.getenv("OPENAI_API_BASE_URL", "http://localhost:8000/v1")
@@ -32,9 +36,9 @@ class AppConfig:
         AppConfig(
             client_url={self.client_url},
             openai_api_base_url={self.openai_api_base_url},
-            openai_api_key={self.openai_api_key},
+            openai_api_key={log_secret(self.openai_api_key)},
             llm_model={self.llm_model},
             language_tool_api_url={self.language_tool_api_url},
-            hmac_secret={self.hmac_secret}
+            hmac_secret={log_secret(self.hmac_secret)}
         )
         """
