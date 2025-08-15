@@ -7,7 +7,7 @@ from bs_translator_backend.models.langugage import Language
 def detect_language(text: str) -> ResultE[Language]:
     def map_to_language(code: str) -> ResultE[Language]:
         try:
-            return Success(Language[code.upper()])
+            return Success(Language[code.upper().strip().replace("-", "_")])
         except KeyError:
             return Failure(Exception(f"Unknown language code: {code}"))
 

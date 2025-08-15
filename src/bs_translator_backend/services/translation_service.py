@@ -83,7 +83,7 @@ class TranslationService:
             yield text
 
         if not config.source_language or config.source_language == DetectLanguage.AUTO:
-            config.source_language = detect_language(text).unwrap()
+            config.source_language = detect_language(text).value_or(Language.DE)
 
         endswith_r = text.endswith("\r")
 
