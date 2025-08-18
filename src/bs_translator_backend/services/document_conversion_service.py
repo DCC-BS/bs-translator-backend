@@ -1,16 +1,14 @@
-import base64
+from pydoc import doc
 import re
-from io import BytesIO
 from pathlib import Path
 from typing import final
 
 import httpx
 from fastapi import HTTPException, UploadFile
-from PIL import Image
 
 from bs_translator_backend.models.app_config import AppConfig
 from bs_translator_backend.models.conversion_result import Base64EncodedImage, ConversionResult
-from bs_translator_backend.models.docling_response import DoclingResponse
+from bs_translator_backend.models.docling_response import DoclingDocument, DoclingResponse
 from bs_translator_backend.models.langugage import DetectLanguage, LanguageOrAuto
 from bs_translator_backend.services.image_reader_serivice import ImageReaderService
 from bs_translator_backend.utils.logger import get_logger
@@ -41,6 +39,45 @@ class DocumentConversionService:
         self.image_reader = ImageReaderService()
         self.config = config
 
+    async def convert_to_docling(
+        self, file: UploadFile, source_lang: LanguageOrAuto
+    ) -> DoclingDocument:
+        languages = [source_lang.value]
+
+        if source_lang == DetectLanguage.AUTO:
+            languages = ["de", "en", "fr", "it"]
+
+        content = file.file
+        filename = file.filename or "uploaded_document"
+        content_type = file.content_type or _get_mimetype(Path(filename))
+
+        files = {"files": (filename, content, content_type)}
+        options: dict[str, str | list[str] | bool] = {
+            "to_formats": ["json"],
+            "image_export_mode": "embedded",
+            "do_ocr": True,
+            "ocr_engine": "easyocr",
+            "ocr_lang": languages,
+            "table_mode": "accurate",
+            "pdf_backend": "pypdfium2",
+        }
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                self.config.docling_url + "/convert/file",
+                files=files,
+                data=options,
+            )
+
+            json_response = response.json()
+            docling_response = DoclingResponse.model_validate(json_response)
+
+            if docling_response.document.json_content is None:
+                logger.error("Docling response does not contain a document")
+                raise HTTPException(status_code=500, detail="Document conversion failed")
+            else:
+                return docling_response.document.json_content
+
     async def convert(self, file: UploadFile, source_lang: LanguageOrAuto) -> ConversionResult:
         languages = [source_lang.value]
 
@@ -51,15 +88,10 @@ class DocumentConversionService:
         filename = file.filename or "uploaded_document"
         content_type = file.content_type or _get_mimetype(Path(filename))
 
-        # document_stream = DocumentStream(
-        #     name=file.filename if file.filename else "uploaded_document",
-        #     stream=BytesIO(file.file.read()),
-        # )
-
         files = {"files": (filename, content, content_type)}
         options: dict[str, str | list[str] | bool] = {
             "to_formats": ["md", "json"],
-            "image_export_mode": "embedded",  # Changed to "embedded" for base64 images
+            "image_export_mode": "embedded",
             "do_ocr": True,
             "ocr_engine": "easyocr",
             "ocr_lang": languages,

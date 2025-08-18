@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from dotenv import load_dotenv
+
 from bs_translator_backend.utils.logger import get_logger
 
 logger = get_logger(__name__)

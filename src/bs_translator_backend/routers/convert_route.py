@@ -13,10 +13,10 @@ from fastapi import APIRouter, Form, Header, UploadFile
 
 from bs_translator_backend.container import Container
 from bs_translator_backend.models.conversion_result import ConversionOutput
+from bs_translator_backend.models.langugage import LanguageOrAuto
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService
 from bs_translator_backend.services.usage_tracking_service import UsageTrackingService
 from bs_translator_backend.utils.logger import get_logger
-from bs_translator_backend.models.langugage import LanguageOrAuto
 
 logger = get_logger("convert_router")
 
@@ -44,7 +44,7 @@ def create_router(
     async def convert(
         file: UploadFile,
         x_client_id: Annotated[str | None, Header()],
-        source_language: LanguageOrAuto = Form(),
+        source_language: Annotated[LanguageOrAuto, Form()],
     ) -> ConversionOutput:
         """
         Convert the content of an uploaded document to markdown with images.

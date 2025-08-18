@@ -1,13 +1,11 @@
-from io import BytesIO
 import pytest
-from _pytest.config import Config
 from fastapi import UploadFile
+from starlette.datastructures import Headers
 
 from bs_translator_backend.models.app_config import AppConfig
 from bs_translator_backend.models.langugage import DetectLanguage
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService
 from bs_translator_backend.utils.load_env import load_env
-from starlette.datastructures import Headers
 
 
 class DummyUploadFile:
