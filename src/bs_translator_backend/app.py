@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from bs_translator_backend.container import Container
+from bs_translator_backend.models.app_config import AppConfig
 from bs_translator_backend.routers import convert_route, translation_route
 from bs_translator_backend.utils.load_env import load_env
 from bs_translator_backend.utils.logger import get_logger, init_logger
@@ -22,8 +23,8 @@ def create_app() -> FastAPI:
         FastAPI: Configured FastAPI application instance
     """
 
-    load_env()
     init_logger()
+    load_env()
 
     app = FastAPI(
         title="BS Translator API",
@@ -38,7 +39,7 @@ def create_app() -> FastAPI:
 
     # Set up dependency injection container
     logger.debug("Configuring dependency injection container")
-    container = Container()
+    container = Container(app_config=AppConfig.from_env())
     container.wire(modules=[translation_route, convert_route])
     container.check_dependencies()
     logger.info("Dependency injection configured")

@@ -21,6 +21,7 @@ dependencies = [
     "dependency-injector>=4.48.1",
     "docling>=2.42.0",
     "fastapi[standard]>=0.116.1",
+    "httpx>=0.28.1",
     "langdetect>=1.0.9",
     "llama-index-core>=0.12.34.post1",
     "llama-index-llms-openai>=0.3.38",
@@ -47,7 +48,8 @@ dev = [
     "tox-uv>=1.11.3",
     "basedpyright>=1.27.1",
     "ruff>=0.9.2",
-    "rich>=13.9.4"
+    "rich>=13.9.4",
+    "pytest-asyncio>=1.1.0",
 ]
 
 [build-system]
@@ -62,10 +64,6 @@ versionscript = "src/bs_translator_backend/_version.py"  # Where to "read" the V
 versionfile-sdist = "src/bs_translator_backend/_version.py"  # Where to "write" the version dict for sdist.
 versionfile-wheel = "src/bs_translator_backend/_version.py"  # Where to "write" the version dict for wheel.
 
-[tool.basedpyright]
-include = [
-    "src"
-]
 exclude = [
     "**/__pycache__",
     "**/.venv",

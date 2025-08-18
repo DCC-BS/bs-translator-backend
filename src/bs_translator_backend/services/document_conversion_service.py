@@ -1,105 +1,117 @@
+import base64
+import re
 from io import BytesIO
+from pathlib import Path
 from typing import final
 
-from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
-from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import (
-    PdfPipelineOptions,
-    PipelineOptions,
-    TableFormerMode,
-    TableStructureOptions,
-)
-from docling.document_converter import (
-    DocumentConverter,
-    ExcelFormatOption,
-    PdfFormatOption,
-    WordFormatOption,
-)
-from docling_core.types.io import DocumentStream
-from fastapi import UploadFile
-from PIL.Image import Image
+import httpx
+from fastapi import HTTPException, UploadFile
+from PIL import Image
 
-from bs_translator_backend.models.conversion_result import ConversionResult
+from bs_translator_backend.models.app_config import AppConfig
+from bs_translator_backend.models.conversion_result import Base64EncodedImage, ConversionResult
+from bs_translator_backend.models.docling_response import DoclingResponse
+from bs_translator_backend.models.langugage import DetectLanguage, LanguageOrAuto
 from bs_translator_backend.services.image_reader_serivice import ImageReaderService
+from bs_translator_backend.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
-def create_converter() -> DocumentConverter:
-    """Create a document converter with default settings."""
-    # accelerator_device: AcceleratorDevice = (
-    #     AcceleratorDevice.CUDA if torch.cuda.is_available() else AcceleratorDevice.CPU
-    # )
-    accelerator_device: AcceleratorDevice = AcceleratorDevice.CPU
+def _get_mimetype(path_source: Path) -> str:
+    """Get MIME type based on file extension."""
 
-    accelerator_options: AcceleratorOptions = AcceleratorOptions(
-        num_threads=4, device=accelerator_device
-    )
-    return DocumentConverter(
-        allowed_formats=[
-            InputFormat.PDF,
-            InputFormat.DOCX,
-            InputFormat.MD,
-            InputFormat.HTML,
-            InputFormat.PPTX,
-            InputFormat.CSV,
-            InputFormat.IMAGE,
-            InputFormat.XLSX,
-        ],
-        format_options={
-            InputFormat.PDF: PdfFormatOption(
-                pipeline_options=PdfPipelineOptions(
-                    do_table_structure=True,
-                    table_structure_options=TableStructureOptions(mode=TableFormerMode.ACCURATE),
-                    accelerator_options=accelerator_options,
-                    generate_picture_images=True,
-                )
-            ),
-            InputFormat.DOCX: WordFormatOption(
-                pipeline_options=PipelineOptions(
-                    accelerator_options=accelerator_options,
-                )
-            ),
-            InputFormat.XLSX: ExcelFormatOption(
-                pipeline_options=PipelineOptions(
-                    accelerator_options=accelerator_options,
-                )
-            ),
-        },
-    )
+    extension = path_source.suffix.lower()
+    mimetypes = {
+        ".pdf": "application/pdf",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        ".html": "text/html",
+        ".adoc": "text/asciidoc",
+        ".md": "text/markdown",
+        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".csv": "text/csv",
+    }
+    return mimetypes.get(extension, "application/octet-stream")
 
 
 @final
 class DocumentConversionService:
-    def __init__(self) -> None:
-        self.converter = create_converter()
+    def __init__(self, config: AppConfig) -> None:
         self.image_reader = ImageReaderService()
+        self.config = config
 
-    def convert(self, file: UploadFile) -> ConversionResult:
-        if file.content_type is not None and file.content_type.startswith("image/"):
-            markdown = self.image_reader.read_image(file)
-            return ConversionResult(markdown=markdown, images={})
+    async def convert(self, file: UploadFile, source_lang: LanguageOrAuto) -> ConversionResult:
+        languages = [source_lang.value]
 
-        document_stream = DocumentStream(
-            name=file.filename if file.filename else "uploaded_document",
-            stream=BytesIO(file.file.read()),
-        )
+        if source_lang == DetectLanguage.AUTO:
+            languages = ["de", "en", "fr", "it"]
 
-        result = self.converter.convert(document_stream)
+        content = file.file
+        filename = file.filename or "uploaded_document"
+        content_type = file.content_type or _get_mimetype(Path(filename))
 
-        image_tag = "<<IMG>>"
+        # document_stream = DocumentStream(
+        #     name=file.filename if file.filename else "uploaded_document",
+        #     stream=BytesIO(file.file.read()),
+        # )
 
-        images: dict[int, Image] = {}
+        files = {"files": (filename, content, content_type)}
+        options: dict[str, str | list[str] | bool] = {
+            "to_formats": ["md", "json"],
+            "image_export_mode": "embedded",  # Changed to "embedded" for base64 images
+            "do_ocr": True,
+            "ocr_engine": "easyocr",
+            "ocr_lang": languages,
+            "table_mode": "accurate",
+            "pdf_backend": "pypdfium2",
+        }
 
-        markdown = result.document.export_to_markdown(
-            image_placeholder=image_tag,
-        ).strip()
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                self.config.docling_url + "/convert/file",
+                files=files,
+                data=options,
+            )
 
-        for i, picture in enumerate(result.document.pictures):
-            img_name = f"img{i + 1}.png"
+            logger.info(f"Response status code: {response.status_code}")
 
-            markdown = markdown.replace(image_tag, f"![{img_name}]({img_name})", 1)
+            # Handle response safely to avoid Unicode decode errors
+            if response.status_code == 200:
+                json_response = response.json()
+                docling_response = DoclingResponse.model_validate(json_response)
 
-            img = picture.get_image(result.document)
-            if img is not None:
-                images[i + 1] = img
+                # Extract markdown content from the docling response
+                markdown = docling_response.document.md_content or ""
 
-        return ConversionResult(markdown=markdown, images=images)
+                images: dict[int, Base64EncodedImage] = {}
+
+                # Extract base64 images directly from markdown
+                base64_pattern = r"!\[.*?\]\(data:image/[^;]+;base64,([^)]+)\)"
+                matches = re.findall(base64_pattern, markdown)
+
+                for idx, base64_data in enumerate(matches):
+                    try:
+                        images[idx] = base64_data
+                        # Replace base64 data in markdown with file path
+                        old_pattern = f"data:image/[^;]+;base64,{re.escape(base64_data)}"
+                        new_path = f"image{idx}.png"
+                        markdown = re.sub(old_pattern, new_path, markdown)
+                    except Exception:
+                        logger.exception(f"Error decoding base64 image {idx}")
+
+                return ConversionResult(markdown=markdown, images=images)
+            else:
+                # For error responses, safely handle potential binary content
+                try:
+                    error_text = response.text
+                    logger.error(f"Error response: {error_text}")
+
+                    raise HTTPException(status_code=response.status_code, detail=error_text)
+                except UnicodeDecodeError as e:
+                    logger.exception(
+                        f"Error response contains binary data (status: {response.status_code})"
+                    )
+                    raise HTTPException(
+                        status_code=response.status_code, detail="Binary data in error response"
+                    ) from e
