@@ -1,21 +1,28 @@
 {
-	"files.exclude": {
-		"**/.DS_Store": true,
-		"**/.git": true,
-		"**/.hg": true,
-		"**/.mypy_cache": true,
-		"**/.pytest_cache": true,
-		"**/.svn": true,
-		"**/.venv": true,
-		"**/CVS": true,
-		"**/Thumbs.db": true,
-		"**/__pycache__": true
-	},
-	"python.testing.pytestArgs": ["tests"],
-	"python.testing.pytestEnabled": true,
-	"python.analysis.exclude": ["**/.venv/**", "**/node_modules/**"],
-	"python.testing.unittestEnabled": false,
-	"github.copilot.enable": {
-		".env": false
-	}
+    "files.exclude": {
+        "**/.DS_Store": true,
+        "**/.git": true,
+        "**/.hg": true,
+        "**/.mypy_cache": true,
+        "**/.pytest_cache": true,
+        "**/.svn": true,
+        "**/.venv": true,
+        "**/CVS": true,
+        "**/Thumbs.db": true,
+        "**/__pycache__": true
+    },
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "github.copilot.enable": {
+        ".env": false
+    },
+    "python.analysis.packageIndexDepths": [
+        {
+            "name": "",
+            "depth": 1
+        }
+    ],
 }

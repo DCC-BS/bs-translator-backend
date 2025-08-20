@@ -6,7 +6,7 @@ It handles text translation using LLM models with customizable parameters includ
 tone, domain, glossary, and context settings.
 """
 
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from typing import final
 
 from fastapi import UploadFile
@@ -14,8 +14,6 @@ from llama_index.core import PromptTemplate
 
 from bs_translator_backend.models.conversion_result import (
     BBox,
-    ConverionImageOutput,
-    ConversionImageOutput,
     ConversionImageTextEntry,
 )
 from bs_translator_backend.models.langugage import DetectLanguage, Language
@@ -134,12 +132,10 @@ class TranslationService:
 
     async def translate_image(
         self, image: UploadFile, config: TranslationConfig
-    ) -> ConversionImageOutput:
+    ) -> AsyncGenerator[ConversionImageTextEntry, None]:
         doc = await self.conversion_service.convert_to_docling(
             image, config.source_language or DetectLanguage.AUTO
         )
-
-        result: list[ConversionImageTextEntry] = []
 
         for txt in doc.texts:
             content = txt.text or ""
@@ -149,11 +145,9 @@ class TranslationService:
             for chunk in self.translate_text(content, config):
                 translated += chunk
 
-            result.append(
-                ConversionImageTextEntry(original=content, translated=translated, bbox=BBox(**bbox))
+            yield ConversionImageTextEntry(
+                original=content, translated=translated, bbox=BBox(**bbox.model_dump())
             )
-
-        return ConversionImageOutput(items=result)
 
     def get_supported_languages(self) -> list[str]:
         """Returns a list of supported languages for translation"""

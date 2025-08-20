@@ -42,6 +42,7 @@ Documentation = "https://DCC-BS.github.io/bs-translator-backend/"
 
 [dependency-groups]
 dev = [
+    "pillow>=10.0.0",
     "coverage>=7.6.12",
     "pytest>=8.3.4",
     "pre-commit>=2.20.0",
