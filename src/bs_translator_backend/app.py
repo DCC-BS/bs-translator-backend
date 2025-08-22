@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import Response, JSONResponse
 
 from bs_translator_backend.container import Container
 from bs_translator_backend.models.app_config import AppConfig
@@ -8,6 +8,7 @@ from bs_translator_backend.models.error_response import ApiErrorException, Error
 from bs_translator_backend.routers import convert_route, translation_route
 from bs_translator_backend.utils.load_env import load_env
 from bs_translator_backend.utils.logger import get_logger, init_logger
+from bs_translator_backend.models.error_codes import UNEXPECTED_ERROR
 
 
 def create_app() -> FastAPI:
@@ -36,15 +37,21 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
-    @app.exception_handler(ApiErrorException)
-    async def my_custom_exception_handler(
-        request: Request, exception: ApiErrorException
-    ) -> JSONResponse:
+    def api_error_handler(request: Request, exc: Exception) -> Response:
+        if isinstance(exc, ApiErrorException):
+            return JSONResponse(
+                status_code=exc.error_response["status"],
+                media_type="application/json",
+                content=exc.error_response,
+            )
+
         return JSONResponse(
-            status_code=exception.error_response["status"],
+            status_code=500,
             media_type="application/json",
-            content=exception.error_response,
+            content={"errorId": UNEXPECTED_ERROR, "status": 500, "debugMessage": str(exc)},
         )
+
+    app.add_exception_handler(ApiErrorException, api_error_handler)
 
     logger = get_logger("app")
     logger.info("Starting Text Mate API application")
