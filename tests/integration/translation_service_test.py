@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from fastapi import UploadFile
 from starlette.datastructures import Headers
@@ -11,8 +13,6 @@ from bs_translator_backend.services.llm_facade import LLMFacade
 from bs_translator_backend.services.text_chunk_service import TextChunkService
 from bs_translator_backend.services.translation_service import TranslationService
 from bs_translator_backend.utils.load_env import load_env
-
-import logging
 
 logger = logging.getLogger(__name__)
 logger.info("Test started")

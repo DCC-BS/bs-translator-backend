@@ -1,14 +1,14 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response, JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from bs_translator_backend.container import Container
 from bs_translator_backend.models.app_config import AppConfig
-from bs_translator_backend.models.error_response import ApiErrorException, ErrorResponse
+from bs_translator_backend.models.error_codes import UNEXPECTED_ERROR
+from bs_translator_backend.models.error_response import ApiErrorException
 from bs_translator_backend.routers import convert_route, translation_route
 from bs_translator_backend.utils.load_env import load_env
 from bs_translator_backend.utils.logger import get_logger, init_logger
-from bs_translator_backend.models.error_codes import UNEXPECTED_ERROR
 
 
 def create_app() -> FastAPI:

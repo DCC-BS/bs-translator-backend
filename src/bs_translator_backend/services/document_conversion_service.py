@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import BinaryIO, final
 
 import httpx
-from fastapi import HTTPException, UploadFile, status
+from fastapi import UploadFile, status
 
 from bs_translator_backend.models.app_config import AppConfig
 from bs_translator_backend.models.conversion_result import Base64EncodedImage, ConversionResult
@@ -19,7 +19,6 @@ from bs_translator_backend.models.error_codes import (
 )
 from bs_translator_backend.models.error_response import ApiErrorException
 from bs_translator_backend.models.langugage import DetectLanguage, LanguageOrAuto
-from bs_translator_backend.services.image_reader_serivice import ImageReaderService
 from bs_translator_backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -80,7 +79,6 @@ def extract_docling_document(response: str, logger_context: dict[str, any]) -> D
 @final
 class DocumentConversionService:
     def __init__(self, config: AppConfig) -> None:
-        self.image_reader = ImageReaderService()
         self.config = config
 
     def fetch_docling_file_convert(

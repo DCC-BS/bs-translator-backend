@@ -21,7 +21,10 @@ from bs_translator_backend.services.document_conversion_service import DocumentC
 from bs_translator_backend.services.llm_facade import LLMFacade
 from bs_translator_backend.services.text_chunk_service import TextChunkService
 from bs_translator_backend.services.translation_service import TranslationService
-from bs_translator_backend.utils.image_overlay import create_side_by_side_comparison, overlay_translations_on_image
+from bs_translator_backend.utils.image_overlay import (
+    create_side_by_side_comparison,
+    overlay_translations_on_image,
+)
 from bs_translator_backend.utils.load_env import load_env
 
 
@@ -56,8 +59,7 @@ async def demonstrate_image_overlay() -> None:
 
             # Configure translation (German to English)
             translate_config = TranslationConfig(
-                source_language=Language.DE,
-                target_language=Language.EN
+                source_language=Language.DE, target_language=Language.EN
             )
 
             print("🔄 Translating document...")
@@ -66,7 +68,9 @@ async def demonstrate_image_overlay() -> None:
             translation_entries = []
             async for entry in translation_service.translate_image(upload_file, translate_config):
                 print(f"📝 Translated: '{entry.original}' -> '{entry.translated}'")
-                print(f"📍 BBox: ({entry.bbox.left:.1f}, {entry.bbox.top:.1f}) to ({entry.bbox.right:.1f}, {entry.bbox.bottom:.1f})")
+                print(
+                    f"📍 BBox: ({entry.bbox.left:.1f}, {entry.bbox.top:.1f}) to ({entry.bbox.right:.1f}, {entry.bbox.bottom:.1f})"
+                )
                 translation_entries.append(entry)
 
             if not translation_entries:
@@ -93,7 +97,7 @@ async def demonstrate_image_overlay() -> None:
                     font_size=16,
                     text_color="red",
                     background_color="white",
-                    background_opacity=200
+                    background_opacity=200,
                 )
                 print(f"✅ Overlay saved to: {output_dir / 'translated_overlay.png'}")
 
@@ -110,7 +114,7 @@ async def demonstrate_image_overlay() -> None:
                     font_size=14,
                     text_color="blue",
                     background_color="yellow",
-                    background_opacity=180
+                    background_opacity=180,
                 )
                 print(f"✅ Comparison saved to: {output_dir / 'side_by_side_comparison.png'}")
 
@@ -127,7 +131,7 @@ async def demonstrate_image_overlay() -> None:
                     font_size=18,
                     text_color="white",
                     background_color="black",
-                    background_opacity=150
+                    background_opacity=150,
                 )
                 print(f"✅ Custom styled overlay saved to: {output_dir / 'custom_styled.png'}")
 

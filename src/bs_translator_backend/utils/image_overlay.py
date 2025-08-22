@@ -24,7 +24,7 @@ def overlay_translations_on_image(
 ) -> Image.Image:
     """
     Overlay translated text on an image at bbox locations.
-    
+
     Args:
         image_data: Image data as bytes, file path, or Path object
         translations: List of translation entries with bbox coordinates
@@ -33,7 +33,7 @@ def overlay_translations_on_image(
         text_color: Color of the overlay text
         background_color: Background color for text overlay
         background_opacity: Opacity of the text background (0-255)
-    
+
     Returns:
         PIL Image object with overlaid translations
     """
@@ -53,7 +53,9 @@ def overlay_translations_on_image(
 
     # Try to load a better font, fall back to default if not available
     try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", font_size)
+        font = ImageFont.truetype(
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", font_size
+        )
     except OSError:
         try:
             font = ImageFont.truetype("arial.ttf", font_size)
@@ -89,7 +91,7 @@ def overlay_translations_on_image(
 
         # Draw the translated text
         draw.text((x, y), entry.translated, fill=text_color, font=font)
-    
+
     # Composite the overlay onto the original image
     result = Image.alpha_composite(image, overlay)
 
@@ -165,7 +167,10 @@ def create_side_by_side_comparison(
         # Resize to match the smaller height
         target_height = min(orig.height, translated.height)
         orig = orig.resize((int(orig.width * target_height / orig.height), target_height))
-        translated = translated.resize((int(translated.width * target_height / translated.height), target_height))
+        translated = translated.resize((
+            int(translated.width * target_height / translated.height),
+            target_height,
+        ))
 
     # Create side-by-side image
     total_width = orig.width + translated.width

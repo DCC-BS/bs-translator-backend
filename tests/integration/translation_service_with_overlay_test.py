@@ -2,6 +2,8 @@
 Enhanced integration test for translation service with image overlay functionality.
 """
 
+import logging
+
 import pytest
 from fastapi import UploadFile
 from starlette.datastructures import Headers
@@ -19,8 +21,6 @@ from bs_translator_backend.utils.image_overlay import (
     overlay_translations_on_image,
 )
 from bs_translator_backend.utils.load_env import load_env
-
-import logging
 
 logger = logging.getLogger(__name__)
 logger.info("Test started")

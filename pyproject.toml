@@ -19,7 +19,6 @@ classifiers = [
 ]
 dependencies = [
     "dependency-injector>=4.48.1",
-    "docling>=2.42.0",
     "fastapi[standard]>=0.116.1",
     "httpx>=0.28.1",
     "langdetect>=1.0.9",
@@ -28,9 +27,8 @@ dependencies = [
     "llama-index-llms-openai-like>=0.3.4",
     "llama-index-readers-file>=0.4.7",
     "openai>=1.97.0",
-    "python-docx>=1.2.0",
     "python-dotenv>=1.0.1",
-    "returns[compatible-mypy]>=0.25.0",
+    "returns[compatible-mypy]>=0.26.0",
     "structlog>=25.1.0",
     "version-pioneer>=0.0.13",
 ]
