@@ -7,6 +7,7 @@ at specified bounding box locations.
 
 from io import BytesIO
 from pathlib import Path
+from typing import cast
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -39,7 +40,7 @@ def overlay_translations_on_image(
     """
     # Load the image
     if isinstance(image_data, str | Path):
-        image = Image.open(image_data)
+        image: Image.Image = Image.open(image_data)
     else:
         image = Image.open(BytesIO(image_data))
 
@@ -52,6 +53,7 @@ def overlay_translations_on_image(
     draw = ImageDraw.Draw(overlay)
 
     # Try to load a better font, fall back to default if not available
+    font: ImageFont.FreeTypeFont | ImageFont.ImageFont
     try:
         font = ImageFont.truetype(
             "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", font_size
@@ -155,12 +157,20 @@ def create_side_by_side_comparison(
     """
     # Load original image
     if isinstance(original_image, str | Path):
-        orig = Image.open(original_image)
+        orig: Image.Image = Image.open(original_image)
     else:
         orig = Image.open(BytesIO(original_image))
 
-    # Create translated version
-    translated = overlay_translations_on_image(original_image, translations, **overlay_kwargs)
+    # Create translated version using cast to satisfy type checker
+    translated = overlay_translations_on_image(
+        original_image,
+        translations,
+        output_path=cast(str | Path | None, overlay_kwargs.get("output_path")),
+        font_size=cast(int, overlay_kwargs.get("font_size", 12)),
+        text_color=cast(str, overlay_kwargs.get("text_color", "red")),
+        background_color=cast(str, overlay_kwargs.get("background_color", "white")),
+        background_opacity=cast(int, overlay_kwargs.get("background_opacity", 200)),
+    )
 
     # Ensure both images have the same height
     if orig.height != translated.height:

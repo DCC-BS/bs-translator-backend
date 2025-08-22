@@ -507,7 +507,7 @@ class DocumentResponse(BaseModel):
 
     filename: str
     md_content: str | None = None
-    json_content: DoclingDocument | None = None
+    json_content: DoclingDocument | dict[str, Any] | None = None
     html_content: str | None = None
     text_content: str | None = None
     doctags_content: str | None = None

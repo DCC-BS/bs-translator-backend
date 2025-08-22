@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from typing import BinaryIO, final
+from typing import Any, BinaryIO, final
 
 import httpx
 from fastapi import UploadFile, status
@@ -41,7 +41,7 @@ def get_mimetype(path_source: Path) -> str:
     return mimetypes.get(extension, "invalid")
 
 
-def validate_mimetype(mimetype: str, logger_context: dict[str, any]) -> None:
+def validate_mimetype(mimetype: str, logger_context: dict[str, Any]) -> None:
     if len(mimetype) == 0:
         logger.error("MIME type is empty", extra=logger_context)
 
@@ -60,7 +60,7 @@ def validate_mimetype(mimetype: str, logger_context: dict[str, any]) -> None:
         })
 
 
-def extract_docling_document(response: str, logger_context: dict[str, any]) -> DocumentResponse:
+def extract_docling_document(response: str, logger_context: dict[str, Any]) -> DocumentResponse:
     docling_response = DoclingResponse.model_validate(response)
     if docling_response.document.json_content is None:
         logger.error(
@@ -154,6 +154,9 @@ class DocumentConversionService:
                 "debugMessage": "Docling response does not contain a document",
             })
 
+        # Ensure we return a DoclingDocument instance
+        if isinstance(document.json_content, dict):
+            return DoclingDocument.model_validate(document.json_content)
         return document.json_content
 
     def convert(self, file: UploadFile, source_lang: LanguageOrAuto) -> ConversionResult:

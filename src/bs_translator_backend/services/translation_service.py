@@ -133,7 +133,7 @@ class TranslationService:
     async def translate_image(
         self, image: UploadFile, config: TranslationConfig
     ) -> AsyncGenerator[ConversionImageTextEntry, None]:
-        doc = await self.conversion_service.convert_to_docling(
+        doc = self.conversion_service.convert_to_docling(
             image, config.source_language or DetectLanguage.AUTO
         )
 
