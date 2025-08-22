@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import BinaryIO, final
 
 import httpx
-from fastapi import HTTPException, UploadFile
+from fastapi import HTTPException, UploadFile, status
 
 from bs_translator_backend.models.app_config import AppConfig
 from bs_translator_backend.models.conversion_result import Base64EncodedImage, ConversionResult
@@ -12,6 +12,12 @@ from bs_translator_backend.models.docling_response import (
     DoclingResponse,
     DocumentResponse,
 )
+from bs_translator_backend.models.error_codes import (
+    INVALID_MIME_TYPE,
+    NO_DOCUMENT,
+    UNEXPECTED_ERROR,
+)
+from bs_translator_backend.models.error_response import ApiErrorException
 from bs_translator_backend.models.langugage import DetectLanguage, LanguageOrAuto
 from bs_translator_backend.services.image_reader_serivice import ImageReaderService
 from bs_translator_backend.utils.logger import get_logger
@@ -39,10 +45,20 @@ def get_mimetype(path_source: Path) -> str:
 def validate_mimetype(mimetype: str, logger_context: dict[str, any]) -> None:
     if len(mimetype) == 0:
         logger.error("MIME type is empty", extra=logger_context)
-        raise HTTPException(status_code=400, detail="Invalid MIME type")
+
+        raise ApiErrorException({
+            "errorId": INVALID_MIME_TYPE,
+            "status": status.HTTP_400_BAD_REQUEST,
+            "debugMessage": "MIME type is empty",
+        })
+
     if mimetype == "invalid":
         logger.error("Invalid MIME type", extra=logger_context)
-        raise HTTPException(status_code=400, detail="Invalid document type")
+        raise ApiErrorException({
+            "errorId": INVALID_MIME_TYPE,
+            "status": status.HTTP_400_BAD_REQUEST,
+            "debugMessage": "Invalid MIME type",
+        })
 
 
 def extract_docling_document(response: str, logger_context: dict[str, any]) -> DocumentResponse:
@@ -52,7 +68,11 @@ def extract_docling_document(response: str, logger_context: dict[str, any]) -> D
             "Docling response does not contain a document",
             extra=logger_context,
         )
-        raise HTTPException(status_code=500, detail="Document conversion failed")
+        raise ApiErrorException({
+            "errorId": NO_DOCUMENT,
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "debugMessage": "Document conversion failed the json content is None",
+        })
 
     return docling_response.document
 
@@ -83,14 +103,20 @@ class DocumentConversionService:
                     error_text = response.text
                     logger.error(f"Error response: {error_text}")
 
-                    raise HTTPException(status_code=response.status_code, detail=error_text)
+                    raise ApiErrorException({
+                        "errorId": UNEXPECTED_ERROR,
+                        "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        "debugMessage": "Unexpected error occurred",
+                    })
                 except UnicodeDecodeError as e:
                     logger.exception(
                         f"Error response contains binary data (status: {response.status_code})"
                     )
-                    raise HTTPException(
-                        status_code=response.status_code, detail="Binary data in error response"
-                    ) from e
+                    raise ApiErrorException({
+                        "errorId": UNEXPECTED_ERROR,
+                        "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        "debugMessage": "Binary data in error response",
+                    }) from e
 
     def convert_to_docling(self, file: UploadFile, source_lang: LanguageOrAuto) -> DoclingDocument:
         languages = [source_lang.value]
@@ -123,7 +149,12 @@ class DocumentConversionService:
 
         if document.json_content is None:
             logger.error("Docling response does not contain a document", extra=logger_context)
-            raise HTTPException(status_code=500, detail="Document conversion failed")
+
+            raise ApiErrorException({
+                "errorId": NO_DOCUMENT,
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "debugMessage": "Docling response does not contain a document",
+            })
 
         return document.json_content
 

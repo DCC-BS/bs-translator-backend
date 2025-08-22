@@ -1,9 +1,10 @@
 from typing import TypedDict
+from fastapi import status
 
 
 class ErrorResponse(TypedDict):
     errorId: str
-    status: int
+    status: int = status.HTTP_500_INTERNAL_SERVER_ERROR
     debugMessage: str | None
 
 

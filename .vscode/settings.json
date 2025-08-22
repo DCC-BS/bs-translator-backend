@@ -19,10 +19,4 @@
     "github.copilot.enable": {
         ".env": false
     },
-    "python.analysis.packageIndexDepths": [
-        {
-            "name": "",
-            "depth": 1
-        }
-    ],
 }
