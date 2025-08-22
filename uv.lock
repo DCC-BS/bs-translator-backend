@@ -200,7 +200,6 @@ dependencies = [
     { name = "llama-index-llms-openai-like" },
     { name = "llama-index-readers-file" },
     { name = "openai" },
-    { name = "pillow" },
     { name = "python-docx" },
     { name = "python-dotenv" },
     { name = "returns", extra = ["compatible-mypy"] },
@@ -212,6 +211,7 @@ dependencies = [
 dev = [
     { name = "basedpyright" },
     { name = "coverage" },
+    { name = "pillow" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -232,7 +232,6 @@ requires-dist = [
     { name = "llama-index-llms-openai-like", specifier = ">=0.3.4" },
     { name = "llama-index-readers-file", specifier = ">=0.4.7" },
     { name = "openai", specifier = ">=1.97.0" },
-    { name = "pillow", specifier = ">=10.0.0" },
     { name = "python-docx", specifier = ">=1.2.0" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "returns", extras = ["compatible-mypy"], specifier = ">=0.25.0" },
@@ -244,6 +243,7 @@ requires-dist = [
 dev = [
     { name = "basedpyright", specifier = ">=1.27.1" },
     { name = "coverage", specifier = ">=7.6.12" },
+    { name = "pillow", specifier = ">=10.0.0" },
     { name = "pre-commit", specifier = ">=2.20.0" },
     { name = "pytest", specifier = ">=8.3.4" },
     { name = "pytest-asyncio", specifier = ">=1.1.0" },

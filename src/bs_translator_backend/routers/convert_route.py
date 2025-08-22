@@ -41,7 +41,7 @@ def create_router(
     router: APIRouter = APIRouter(prefix="/convert", tags=["convert"])
 
     @router.post("/doc", summary="Convert document to markdown")
-    async def convert(
+    def convert(
         file: UploadFile,
         x_client_id: Annotated[str | None, Header()],
         source_language: Annotated[LanguageOrAuto, Form()],
@@ -63,7 +63,7 @@ def create_router(
             __name__, convert.__name__, user_id=x_client_id, file_size=file.size
         )
 
-        result = await document_conversion_service.convert(file, source_language)
+        result = document_conversion_service.convert(file, source_language)
         return ConversionOutput(markdown=result.markdown, images=result.images)
 
     logger.info("Conversion router configured")

@@ -14,9 +14,6 @@
         "**/.venv/**"
     ],
     "typeCheckingMode": "strict",
-    "useLibraryCodeForTypes": false,
-    "autoImportCompletions": true,
-    "indexing": false,
-    "autoSearchPaths": false,
-    "extraPaths": []
+    "reportGeneralTypeIssues": false,
+    "reportUnknownParameterType": false
 }

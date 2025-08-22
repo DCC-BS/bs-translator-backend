@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from bs_translator_backend.container import Container
@@ -6,6 +7,7 @@ from bs_translator_backend.models.app_config import AppConfig
 from bs_translator_backend.routers import convert_route, translation_route
 from bs_translator_backend.utils.load_env import load_env
 from bs_translator_backend.utils.logger import get_logger, init_logger
+from bs_translator_backend.models.error_response import ApiErrorException, ErrorResponse
 
 
 def create_app() -> FastAPI:
@@ -33,6 +35,15 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
     )
+
+    @app.exception_handler(ApiErrorException)
+    async def my_custom_exception_handler(
+        request: Request, exception: ApiErrorException
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=exception.error_response["status"],
+            content=exception.error_response,
+        )
 
     logger = get_logger("app")
     logger.info("Starting Text Mate API application")
