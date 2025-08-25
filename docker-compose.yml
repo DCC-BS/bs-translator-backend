@@ -13,7 +13,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              count: all
+              device_ids: [ '1' ]
               capabilities: [ gpu ]
     ipc: host
     volumes:
@@ -21,9 +21,38 @@ services:
     command: >
       --port 8000
       --model Qwen/Qwen3-32B-AWQ
-      --max-model-len 40960
-      --gpu-memory-utilization 0.75
+      --max-model-len 10000
+      --max-num-seqs 1
+      --kv-cache-dtype fp8
+      --gpu-memory-utilization 0.95
       --enable-auto-tool-choice
       --tool-call-parser hermes
-      --tensor-parallel-size 2
+      --tensor-parallel-size 1
       --reasoning-parser qwen3
+      --uvicorn-log-level warning
+      --disable-log-requests
+  docling-serve:
+    image: quay.io/docling-project/docling-serve-cu124:latest
+    container_name: docling-serve
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: [ '0' ]
+              capabilities: [gpu]
+    ports:
+      - "8004:5001"
+    environment:
+      - DOCLING_MODELS_PATH=/models
+      - DOCLING_CONFIG_FILE=/app/docling_config.json
+      - DOCLING_SERVE_ENABLE_UI=true
+    volumes:
+      - "${HOME}/.cache/docling:/models"
+      - ./docling_config.json:/app/docling_config.json:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s

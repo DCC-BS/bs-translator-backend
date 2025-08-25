@@ -1,105 +1,212 @@
-from io import BytesIO
-from typing import final
+import re
+from pathlib import Path
+from typing import Any, BinaryIO, final
 
-from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
-from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import (
-    PdfPipelineOptions,
-    PipelineOptions,
-    TableFormerMode,
-    TableStructureOptions,
+import httpx
+from fastapi import UploadFile, status
+
+from bs_translator_backend.models.app_config import AppConfig
+from bs_translator_backend.models.conversion_result import Base64EncodedImage, ConversionResult
+from bs_translator_backend.models.docling_response import (
+    DoclingDocument,
+    DoclingResponse,
+    DocumentResponse,
 )
-from docling.document_converter import (
-    DocumentConverter,
-    ExcelFormatOption,
-    PdfFormatOption,
-    WordFormatOption,
+from bs_translator_backend.models.error_codes import (
+    INVALID_MIME_TYPE,
+    NO_DOCUMENT,
+    UNEXPECTED_ERROR,
 )
-from docling_core.types.io import DocumentStream
-from fastapi import UploadFile
-from PIL.Image import Image
+from bs_translator_backend.models.error_response import ApiErrorException
+from bs_translator_backend.models.langugage import DetectLanguage, LanguageOrAuto
+from bs_translator_backend.utils.logger import get_logger
 
-from bs_translator_backend.models.conversion_result import ConversionResult
-from bs_translator_backend.services.image_reader_serivice import ImageReaderService
+logger = get_logger(__name__)
 
 
-def create_converter() -> DocumentConverter:
-    """Create a document converter with default settings."""
-    # accelerator_device: AcceleratorDevice = (
-    #     AcceleratorDevice.CUDA if torch.cuda.is_available() else AcceleratorDevice.CPU
-    # )
-    accelerator_device: AcceleratorDevice = AcceleratorDevice.CPU
+def get_mimetype(path_source: Path) -> str:
+    """Get MIME type based on file extension."""
 
-    accelerator_options: AcceleratorOptions = AcceleratorOptions(
-        num_threads=4, device=accelerator_device
-    )
-    return DocumentConverter(
-        allowed_formats=[
-            InputFormat.PDF,
-            InputFormat.DOCX,
-            InputFormat.MD,
-            InputFormat.HTML,
-            InputFormat.PPTX,
-            InputFormat.CSV,
-            InputFormat.IMAGE,
-            InputFormat.XLSX,
-        ],
-        format_options={
-            InputFormat.PDF: PdfFormatOption(
-                pipeline_options=PdfPipelineOptions(
-                    do_table_structure=True,
-                    table_structure_options=TableStructureOptions(mode=TableFormerMode.ACCURATE),
-                    accelerator_options=accelerator_options,
-                    generate_picture_images=True,
-                )
-            ),
-            InputFormat.DOCX: WordFormatOption(
-                pipeline_options=PipelineOptions(
-                    accelerator_options=accelerator_options,
-                )
-            ),
-            InputFormat.XLSX: ExcelFormatOption(
-                pipeline_options=PipelineOptions(
-                    accelerator_options=accelerator_options,
-                )
-            ),
-        },
-    )
+    extension = path_source.suffix.lower()
+    mimetypes = {
+        ".pdf": "application/pdf",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        ".html": "text/html",
+        ".adoc": "text/asciidoc",
+        ".md": "text/markdown",
+        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".csv": "text/csv",
+    }
+    return mimetypes.get(extension, "invalid")
+
+
+def validate_mimetype(mimetype: str, logger_context: dict[str, Any]) -> None:
+    if len(mimetype) == 0:
+        logger.error("MIME type is empty", extra=logger_context)
+
+        raise ApiErrorException({
+            "errorId": INVALID_MIME_TYPE,
+            "status": status.HTTP_400_BAD_REQUEST,
+            "debugMessage": "MIME type is empty",
+        })
+
+    if mimetype == "invalid":
+        logger.error("Invalid MIME type", extra=logger_context)
+        raise ApiErrorException({
+            "errorId": INVALID_MIME_TYPE,
+            "status": status.HTTP_400_BAD_REQUEST,
+            "debugMessage": "Invalid MIME type",
+        })
+
+
+def extract_docling_document(response: str, logger_context: dict[str, Any]) -> DocumentResponse:
+    docling_response = DoclingResponse.model_validate(response)
+    if docling_response.document.json_content is None:
+        logger.error(
+            "Docling response does not contain a document",
+            extra=logger_context,
+        )
+        raise ApiErrorException({
+            "errorId": NO_DOCUMENT,
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "debugMessage": "Document conversion failed the json content is None",
+        })
+
+    return docling_response.document
 
 
 @final
 class DocumentConversionService:
-    def __init__(self) -> None:
-        self.converter = create_converter()
-        self.image_reader = ImageReaderService()
+    def __init__(self, config: AppConfig) -> None:
+        self.config = config
+        self.client = httpx.Client(timeout=30.0)
 
-    def convert(self, file: UploadFile) -> ConversionResult:
-        if file.content_type is not None and file.content_type.startswith("image/"):
-            markdown = self.image_reader.read_image(file)
-            return ConversionResult(markdown=markdown, images={})
+    def __del__(self) -> None:
+        self.client.close()
 
-        document_stream = DocumentStream(
-            name=file.filename if file.filename else "uploaded_document",
-            stream=BytesIO(file.file.read()),
+    def fetch_docling_file_convert(
+        self,
+        files: dict[str, tuple[str, BinaryIO, str]],
+        options: dict[str, str | list[str] | bool],
+    ) -> httpx.Response:
+        response = self.client.post(
+            self.config.docling_url + "/convert/file",
+            files=files,
+            data=options,
         )
 
-        result = self.converter.convert(document_stream)
+        if 200 <= response.status_code < 300:
+            return response
+        else:
+            # For error responses, safely handle potential binary content
+            try:
+                error_text = response.text
+                logger.error(f"Error response: {error_text}")
 
-        image_tag = "<<IMG>>"
+                raise ApiErrorException({
+                    "errorId": UNEXPECTED_ERROR,
+                    "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "debugMessage": "Unexpected error occurred",
+                })
+            except UnicodeDecodeError as e:
+                logger.exception(
+                    f"Error response contains binary data (status: {response.status_code})"
+                )
+                raise ApiErrorException({
+                    "errorId": UNEXPECTED_ERROR,
+                    "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "debugMessage": "Binary data in error response",
+                }) from e
 
-        images: dict[int, Image] = {}
+    def convert_to_docling(self, file: UploadFile, source_lang: LanguageOrAuto) -> DoclingDocument:
+        languages = [source_lang.value]
 
-        markdown = result.document.export_to_markdown(
-            image_placeholder=image_tag,
-        ).strip()
+        if source_lang == DetectLanguage.AUTO:
+            languages = ["de", "en", "fr", "it"]
 
-        for i, picture in enumerate(result.document.pictures):
-            img_name = f"img{i + 1}.png"
+        content = file.file
+        filename = file.filename or "uploaded_document"
+        content_type = get_mimetype(Path(filename))
+        validate_mimetype(content_type, logger_context={"content_type": content_type})
 
-            markdown = markdown.replace(image_tag, f"![{img_name}]({img_name})", 1)
+        files = {"files": (filename, content, content_type)}
+        options: dict[str, str | list[str] | bool] = {
+            "to_formats": ["json"],
+            "image_export_mode": "embedded",
+            "do_ocr": True,
+            "ocr_engine": "easyocr",
+            "ocr_lang": languages,
+            "table_mode": "accurate",
+            "pdf_backend": "pypdfium2",
+        }
 
-            img = picture.get_image(result.document)
-            if img is not None:
-                images[i + 1] = img
+        logger_context = {"options": options, "content_type": content_type}
+
+        response = self.fetch_docling_file_convert(files, options)
+        json_response = response.json()
+
+        document = extract_docling_document(json_response, logger_context)
+
+        if document.json_content is None:
+            logger.error("Docling response does not contain a document", extra=logger_context)
+
+            raise ApiErrorException({
+                "errorId": NO_DOCUMENT,
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "debugMessage": "Docling response does not contain a document",
+            })
+
+        # Ensure we return a DoclingDocument instance
+        if isinstance(document.json_content, dict):
+            return DoclingDocument.model_validate(document.json_content)
+        return document.json_content
+
+    def convert(self, file: UploadFile, source_lang: LanguageOrAuto) -> ConversionResult:
+        languages = [source_lang.value]
+
+        if source_lang == DetectLanguage.AUTO:
+            languages = ["de", "en", "fr", "it"]
+
+        content = file.file
+        filename = file.filename or "uploaded_document"
+        content_type = get_mimetype(Path(filename))
+        validate_mimetype(content_type, logger_context={"content_type": content_type})
+
+        files = {"files": (filename, content, content_type)}
+        options: dict[str, str | list[str] | bool] = {
+            "to_formats": ["md", "json"],
+            "image_export_mode": "embedded",
+            "do_ocr": True,
+            "ocr_engine": "easyocr",
+            "ocr_lang": languages,
+            "table_mode": "accurate",
+            "pdf_backend": "pypdfium2",
+        }
+
+        response = self.fetch_docling_file_convert(files, options)
+        json_response = response.json()
+        docling_response = extract_docling_document(
+            json_response, logger_context={"options": options, "content_type": content_type}
+        )
+
+        # Extract markdown content from the docling response
+        markdown = docling_response.md_content or ""
+
+        images: dict[int, Base64EncodedImage] = {}
+
+        # Extract base64 images directly from markdown
+        base64_pattern = r"!\[.*?\]\(data:image/[^;]+;base64,([^)]+)\)"
+        matches = re.findall(base64_pattern, markdown)
+
+        for idx, base64_data in enumerate(matches):
+            try:
+                images[idx] = base64_data
+                # Replace base64 data in markdown with file path
+                old_pattern = f"data:image/[^;]+;base64,{re.escape(base64_data)}"
+                new_path = f"image{idx}.png"
+                markdown = re.sub(old_pattern, new_path, markdown)
+            except Exception:
+                logger.exception(f"Error decoding base64 image {idx}")
 
         return ConversionResult(markdown=markdown, images=images)

@@ -6,15 +6,14 @@ It provides endpoints for converting various document formats (PDF, DOCX)
 to markdown with image extraction capabilities.
 """
 
-import base64
-from io import BytesIO
 from typing import Annotated
 
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Header, UploadFile
+from fastapi import APIRouter, Form, Header, UploadFile
 
 from bs_translator_backend.container import Container
 from bs_translator_backend.models.conversion_result import ConversionOutput
+from bs_translator_backend.models.langugage import LanguageOrAuto
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService
 from bs_translator_backend.services.usage_tracking_service import UsageTrackingService
 from bs_translator_backend.utils.logger import get_logger
@@ -42,7 +41,11 @@ def create_router(
     router: APIRouter = APIRouter(prefix="/convert", tags=["convert"])
 
     @router.post("/doc", summary="Convert document to markdown")
-    def convert(file: UploadFile, x_client_id: Annotated[str | None, Header()]) -> ConversionOutput:
+    def convert(
+        file: UploadFile,
+        x_client_id: Annotated[str | None, Header()],
+        source_language: Annotated[LanguageOrAuto, Form()],
+    ) -> ConversionOutput:
         """
         Convert the content of an uploaded document to markdown with images.
 
@@ -60,20 +63,8 @@ def create_router(
             __name__, convert.__name__, user_id=x_client_id, file_size=file.size
         )
 
-        result = document_conversion_service.convert(file)
-
-        # Convert PIL Images to base64 strings for JSON serialization
-        images: dict[int, str] = {}
-        for i, img in result.images.items():
-            buffer = BytesIO()
-            # Save as PNG format for consistency
-            img.save(buffer, format="PNG")
-            _ = buffer.seek(0)
-            # Encode to base64 with data URI prefix
-            img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
-            images[i] = f"data:image/png;base64,{img_base64}"
-
-        return ConversionOutput(markdown=result.markdown, images=images)
+        result = document_conversion_service.convert(file, source_language)
+        return ConversionOutput(markdown=result.markdown, images=result.images)
 
     logger.info("Conversion router configured")
     return router

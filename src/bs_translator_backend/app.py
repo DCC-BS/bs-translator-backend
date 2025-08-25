@@ -1,7 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, Response
 
 from bs_translator_backend.container import Container
+from bs_translator_backend.models.app_config import AppConfig
+from bs_translator_backend.models.error_codes import UNEXPECTED_ERROR
+from bs_translator_backend.models.error_response import ApiErrorException
 from bs_translator_backend.routers import convert_route, translation_route
 from bs_translator_backend.utils.load_env import load_env
 from bs_translator_backend.utils.logger import get_logger, init_logger
@@ -22,8 +26,8 @@ def create_app() -> FastAPI:
         FastAPI: Configured FastAPI application instance
     """
 
-    load_env()
     init_logger()
+    load_env()
 
     app = FastAPI(
         title="BS Translator API",
@@ -33,12 +37,28 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
+    def api_error_handler(request: Request, exc: Exception) -> Response:
+        if isinstance(exc, ApiErrorException):
+            return JSONResponse(
+                status_code=exc.error_response["status"],
+                media_type="application/json",
+                content=exc.error_response,
+            )
+
+        return JSONResponse(
+            status_code=500,
+            media_type="application/json",
+            content={"errorId": UNEXPECTED_ERROR, "status": 500, "debugMessage": str(exc)},
+        )
+
+    app.add_exception_handler(ApiErrorException, api_error_handler)
+
     logger = get_logger("app")
     logger.info("Starting Text Mate API application")
 
     # Set up dependency injection container
     logger.debug("Configuring dependency injection container")
-    container = Container()
+    container = Container(app_config=AppConfig.from_env())
     container.wire(modules=[translation_route, convert_route])
     container.check_dependencies()
     logger.info("Dependency injection configured")

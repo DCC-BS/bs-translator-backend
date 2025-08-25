@@ -1,0 +1,19 @@
+{
+  "exclude": [
+    ".venv",
+    "**/__pycache__",
+    "**/.pytest_cache",
+    "**/node_modules"
+  ],
+  "ignore": [
+    ".venv/**",
+    "**/.venv/**"
+  ],
+  "include": [
+    "bs_translator_backend",
+    "tests"
+  ],
+  "reportGeneralTypeIssues": false,
+  "reportUnknownParameterType": false,
+  "typeCheckingMode": "strict"
+}

@@ -11,7 +11,7 @@ from bs_translator_backend.services.usage_tracking_service import UsageTrackingS
 
 
 class Container(containers.DeclarativeContainer):
-    app_config: providers.Singleton[AppConfig] = providers.Singleton(AppConfig)
+    app_config = providers.Singleton(AppConfig)
 
     llm: providers.Singleton[LLM] = providers.Singleton(
         QwenVllm,
@@ -28,14 +28,15 @@ class Container(containers.DeclarativeContainer):
         max_tokens=6000,
     )
 
+    document_conversion_service: providers.Singleton[DocumentConversionService] = (
+        providers.Singleton(DocumentConversionService, config=app_config)
+    )
+
     translation_service: providers.Singleton[TranslationService] = providers.Singleton(
         TranslationService,
         llm_facade=llm_facade,
         text_chunk_service=text_chunk_service,
-    )
-
-    document_conversion_service: providers.Singleton[DocumentConversionService] = (
-        providers.Singleton(DocumentConversionService)
+        conversion_service=document_conversion_service,
     )
 
     usage_tracking_service: providers.Singleton[UsageTrackingService] = providers.Singleton(

@@ -6,13 +6,19 @@ It handles text translation using LLM models with customizable parameters includ
 tone, domain, glossary, and context settings.
 """
 
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from typing import final
 
+from fastapi import UploadFile
 from llama_index.core import PromptTemplate
 
+from bs_translator_backend.models.conversion_result import (
+    BBox,
+    ConversionImageTextEntry,
+)
 from bs_translator_backend.models.langugage import DetectLanguage, Language
 from bs_translator_backend.models.translation_config import TranslationConfig
+from bs_translator_backend.services.document_conversion_service import DocumentConversionService
 from bs_translator_backend.services.llm_facade import LLMFacade
 from bs_translator_backend.services.text_chunk_service import TextChunkService
 from bs_translator_backend.utils.language_detection import detect_language
@@ -46,9 +52,15 @@ class TranslationService:
     - Streaming translation responses
     """
 
-    def __init__(self, llm_facade: LLMFacade, text_chunk_service: TextChunkService):
+    def __init__(
+        self,
+        llm_facade: LLMFacade,
+        text_chunk_service: TextChunkService,
+        conversion_service: DocumentConversionService,
+    ):
         self.llm_facade = llm_facade
         self.text_chunk_service = text_chunk_service
+        self.conversion_service = conversion_service
 
     def _create_user_message(self, text: str, config: TranslationConfig) -> str:
         """Creates the user message for the chat API"""
@@ -117,6 +129,27 @@ class TranslationService:
         # If the last chunk ends with a newline, preserve it
         if endswith_r:
             yield "\r"
+
+    async def translate_image(
+        self, image: UploadFile, config: TranslationConfig
+    ) -> AsyncGenerator[ConversionImageTextEntry, None]:
+        doc = self.conversion_service.convert_to_docling(
+            image, config.source_language or DetectLanguage.AUTO
+        )
+
+        for txt in doc.texts:
+            content = txt.text or ""
+            if not txt.prov:
+                continue
+            bbox = txt.prov[0].bbox
+
+            translated = ""
+            for chunk in self.translate_text(content, config):
+                translated += chunk
+
+            yield ConversionImageTextEntry(
+                original=content, translated=translated, bbox=BBox(**bbox.model_dump())
+            )
 
     def get_supported_languages(self) -> list[str]:
         """Returns a list of supported languages for translation"""
