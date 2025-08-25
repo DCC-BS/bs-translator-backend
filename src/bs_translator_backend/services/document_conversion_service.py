@@ -80,41 +80,44 @@ def extract_docling_document(response: str, logger_context: dict[str, Any]) -> D
 class DocumentConversionService:
     def __init__(self, config: AppConfig) -> None:
         self.config = config
+        self.client = httpx.Client(timeout=30.0)
+
+    def __del__(self) -> None:
+        self.client.close()
 
     def fetch_docling_file_convert(
         self,
         files: dict[str, tuple[str, BinaryIO, str]],
         options: dict[str, str | list[str] | bool],
     ) -> httpx.Response:
-        with httpx.Client(timeout=30.0) as client:
-            response = client.post(
-                self.config.docling_url + "/convert/file",
-                files=files,
-                data=options,
-            )
+        response = self.client.post(
+            self.config.docling_url + "/convert/file",
+            files=files,
+            data=options,
+        )
 
-            if response.status_code <= 200:
-                return response
-            else:
-                # For error responses, safely handle potential binary content
-                try:
-                    error_text = response.text
-                    logger.error(f"Error response: {error_text}")
+        if 200 <= response.status_code < 300:
+            return response
+        else:
+            # For error responses, safely handle potential binary content
+            try:
+                error_text = response.text
+                logger.error(f"Error response: {error_text}")
 
-                    raise ApiErrorException({
-                        "errorId": UNEXPECTED_ERROR,
-                        "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        "debugMessage": "Unexpected error occurred",
-                    })
-                except UnicodeDecodeError as e:
-                    logger.exception(
-                        f"Error response contains binary data (status: {response.status_code})"
-                    )
-                    raise ApiErrorException({
-                        "errorId": UNEXPECTED_ERROR,
-                        "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        "debugMessage": "Binary data in error response",
-                    }) from e
+                raise ApiErrorException({
+                    "errorId": UNEXPECTED_ERROR,
+                    "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "debugMessage": "Unexpected error occurred",
+                })
+            except UnicodeDecodeError as e:
+                logger.exception(
+                    f"Error response contains binary data (status: {response.status_code})"
+                )
+                raise ApiErrorException({
+                    "errorId": UNEXPECTED_ERROR,
+                    "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "debugMessage": "Binary data in error response",
+                }) from e
 
     def convert_to_docling(self, file: UploadFile, source_lang: LanguageOrAuto) -> DoclingDocument:
         languages = [source_lang.value]

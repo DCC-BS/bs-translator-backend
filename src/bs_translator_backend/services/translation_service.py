@@ -139,6 +139,8 @@ class TranslationService:
 
         for txt in doc.texts:
             content = txt.text or ""
+            if not txt.prov:
+                continue
             bbox = txt.prov[0].bbox
 
             translated = ""

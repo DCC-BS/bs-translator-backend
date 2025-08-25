@@ -8,18 +8,6 @@ from bs_translator_backend.services.document_conversion_service import DocumentC
 from bs_translator_backend.utils.load_env import load_env
 
 
-class DummyUploadFile:
-    def __init__(
-        self, filename: str = "test.png", content_type: str = "image/png", content: bytes = b"data"
-    ):
-        self.filename = filename
-        self.content_type = content_type
-        self._content = content
-
-    async def read(self) -> bytes:
-        return self._content
-
-
 @pytest.fixture
 def app_config() -> AppConfig:
     load_env()
@@ -37,6 +25,6 @@ async def test_convert_pdf_file(app_config: AppConfig) -> None:
         headers = Headers({"content-type": "application/pdf"})
 
         upload_file = UploadFile(file=file, filename="example_report.pdf", headers=headers)
-        result = await service.convert(upload_file, DetectLanguage.AUTO)
+        result = service.convert(upload_file, DetectLanguage.AUTO)
         assert hasattr(result, "markdown")
         assert hasattr(result, "images")
