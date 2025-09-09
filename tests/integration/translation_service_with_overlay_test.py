@@ -30,7 +30,7 @@ logger.info("Test started")
 def app_config() -> AppConfig:
     load_env()
     return AppConfig.from_env()
-
+ 
 
 @pytest.mark.asyncio
 async def test_image_translate_with_overlay(app_config: AppConfig) -> None:
@@ -49,7 +49,7 @@ async def test_image_translate_with_overlay(app_config: AppConfig) -> None:
 
         # Collect all translation entries
         translation_entries = []
-        async for entry in translation_service.translate_image(upload_file, translate_config):
+        for entry in translation_service.translate_image(upload_file, translate_config):
             logger.info(f"Original: {entry.original}")
             logger.info(f"Translated: {entry.translated}")
             logger.info(f"BBox: {entry.bbox}")
@@ -112,21 +112,20 @@ async def test_translation_bbox_coordinates(app_config: AppConfig) -> None:
         upload_file = UploadFile(file=file, filename="ReportView.png", headers=headers)
         translate_config = TranslationConfig(source_language=Language.DE)
 
-        async for entry in translation_service.translate_image(upload_file, translate_config):
-            # Validate bbox structure
+        for entry in translation_service.translate_image(upload_file, translate_config):
+            # Check that bbox coordinates are valid
             assert entry.bbox is not None
             assert hasattr(entry.bbox, "left")
             assert hasattr(entry.bbox, "top")
             assert hasattr(entry.bbox, "right")
             assert hasattr(entry.bbox, "bottom")
 
-            # Validate coordinate values are reasonable
+            # Check coordinate validity
             assert entry.bbox.left >= 0
             assert entry.bbox.top >= 0
             assert entry.bbox.right > entry.bbox.left
-            assert entry.bbox.bottom > entry.bbox.top
-
-            print(f"✅ Valid bbox: {entry.bbox}")
-
-            # Only test first few entries to avoid long execution
-            break
+            # Handle different coordinate origins - in BOTTOMLEFT origin, bottom can be less than top
+            if hasattr(entry.bbox, 'coord_origin') and entry.bbox.coord_origin == 'BOTTOMLEFT':
+                assert entry.bbox.bottom < entry.bbox.top  # For bottom-left origin
+            else:
+                assert entry.bbox.bottom > entry.bbox.top  # For top-left origin

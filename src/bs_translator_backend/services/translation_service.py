@@ -7,6 +7,7 @@ tone, domain, glossary, and context settings.
 """
 
 from collections.abc import AsyncGenerator, Generator
+from io import BytesIO
 from typing import final
 
 from fastapi import UploadFile
@@ -130,11 +131,11 @@ class TranslationService:
         if endswith_r:
             yield "\r"
 
-    async def translate_image(
-        self, image: UploadFile, config: TranslationConfig
-    ) -> AsyncGenerator[ConversionImageTextEntry, None]:
+    def translate_image(
+        self, image: UploadFile | BytesIO, config: TranslationConfig, filename: str | None = None, content_type: str | None = None
+    ) -> Generator[ConversionImageTextEntry, None, None]:
         doc = self.conversion_service.convert_to_docling(
-            image, config.source_language or DetectLanguage.AUTO
+            image, config.source_language or DetectLanguage.AUTO, filename, content_type
         )
 
         for txt in doc.texts:

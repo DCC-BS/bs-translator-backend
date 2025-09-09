@@ -1,4 +1,6 @@
 import re
+from collections.abc import Mapping
+from io import BytesIO
 from pathlib import Path
 from typing import Any, BinaryIO, final
 
@@ -37,6 +39,14 @@ def get_mimetype(path_source: Path) -> str:
         ".md": "text/markdown",
         ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         ".csv": "text/csv",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".tiff": "image/tiff",
+        ".bmp": "image/bmp",
+        ".gif": "image/gif",
+        ".webp": "image/webp",
+        ".txt": "text/plain",
     }
     return mimetypes.get(extension, "invalid")
 
@@ -87,7 +97,7 @@ class DocumentConversionService:
 
     def fetch_docling_file_convert(
         self,
-        files: dict[str, tuple[str, BinaryIO, str]],
+        files: Mapping[str, tuple[str, BinaryIO | BytesIO, str]],
         options: dict[str, str | list[str] | bool],
     ) -> httpx.Response:
         response = self.client.post(
@@ -119,18 +129,28 @@ class DocumentConversionService:
                     "debugMessage": "Binary data in error response",
                 }) from e
 
-    def convert_to_docling(self, file: UploadFile, source_lang: LanguageOrAuto) -> DoclingDocument:
+    def convert_to_docling(self, file: UploadFile | BytesIO, source_lang: LanguageOrAuto, filename: str | None = None, content_type: str | None = None) -> DoclingDocument:
         languages = [source_lang.value]
 
         if source_lang == DetectLanguage.AUTO:
             languages = ["de", "en", "fr", "it"]
 
-        content = file.file
-        filename = file.filename or "uploaded_document"
-        content_type = get_mimetype(Path(filename))
+        # Handle both UploadFile and BytesIO cases
+        if isinstance(file, UploadFile):
+            content = file.file.read()
+            filename = filename or file.filename or "uploaded_document"
+            if content_type is None:
+                content_type = get_mimetype(Path(filename))
+        else:
+            # It's a BytesIO object
+            content = file.read()
+            filename = filename or "uploaded_document"
+            if content_type is None:
+                content_type = get_mimetype(Path(filename))
+
         validate_mimetype(content_type, logger_context={"content_type": content_type})
 
-        files = {"files": (filename, content, content_type)}
+        files = {"files": (filename, BytesIO(content), content_type)}
         options: dict[str, str | list[str] | bool] = {
             "to_formats": ["json"],
             "image_export_mode": "embedded",
@@ -162,18 +182,28 @@ class DocumentConversionService:
             return DoclingDocument.model_validate(document.json_content)
         return document.json_content
 
-    def convert(self, file: UploadFile, source_lang: LanguageOrAuto) -> ConversionResult:
+    def convert(self, file: UploadFile | BytesIO, source_lang: LanguageOrAuto, filename: str | None = None, content_type: str | None = None) -> ConversionResult:
         languages = [source_lang.value]
 
         if source_lang == DetectLanguage.AUTO:
             languages = ["de", "en", "fr", "it"]
 
-        content = file.file
-        filename = file.filename or "uploaded_document"
-        content_type = get_mimetype(Path(filename))
+        # Handle both UploadFile and BytesIO cases
+        if isinstance(file, UploadFile):
+            content = file.file.read()
+            filename = filename or file.filename or "uploaded_document"
+            if content_type is None:
+                content_type = get_mimetype(Path(filename))
+        else:
+            # It's a BytesIO object
+            content = file.read()
+            filename = filename or "uploaded_document"
+            if content_type is None:
+                content_type = get_mimetype(Path(filename))
+
         validate_mimetype(content_type, logger_context={"content_type": content_type})
 
-        files = {"files": (filename, content, content_type)}
+        files = {"files": (filename, BytesIO(content), content_type)}
         options: dict[str, str | list[str] | bool] = {
             "to_formats": ["md", "json"],
             "image_export_mode": "embedded",
