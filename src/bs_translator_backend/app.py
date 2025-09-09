@@ -9,6 +9,7 @@ from bs_translator_backend.models.error_response import ApiErrorException
 from bs_translator_backend.routers import convert_route, translation_route
 from bs_translator_backend.utils.load_env import load_env
 from bs_translator_backend.utils.logger import get_logger, init_logger
+from bs_translator_backend.middlewares.request_cancel_middleware import RequestCancelledMiddleware
 
 
 def create_app() -> FastAPI:
@@ -75,6 +76,8 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(RequestCancelledMiddleware)
+
     logger.info(f"CORS configured with origin: {config.client_url}")
 
     # Include routers
