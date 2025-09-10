@@ -6,10 +6,11 @@ It provides endpoints for converting various document formats (PDF, DOCX)
 to markdown with image extraction capabilities.
 """
 
+import asyncio
 from typing import Annotated
 
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Form, Header, UploadFile
+from fastapi import APIRouter, Form, Header, Request, UploadFile
 
 from bs_translator_backend.container import Container
 from bs_translator_backend.models.conversion_result import ConversionOutput
@@ -41,7 +42,8 @@ def create_router(
     router: APIRouter = APIRouter(prefix="/convert", tags=["convert"])
 
     @router.post("/doc", summary="Convert document to markdown")
-    def convert(
+    async def convert(
+        request: Request,
         file: UploadFile,
         x_client_id: Annotated[str | None, Header()],
         source_language: Annotated[LanguageOrAuto, Form()],
@@ -63,7 +65,16 @@ def create_router(
             __name__, convert.__name__, user_id=x_client_id, file_size=file.size
         )
 
-        result = document_conversion_service.convert(file, source_language)
+        task = asyncio.create_task(document_conversion_service.convert(file, source_language))
+
+        while task.done() is False:
+            await asyncio.sleep(0.1)
+            if await request.is_disconnected():
+                task.cancel()
+                logger.info("Conversion task cancelled due to client disconnect")
+                return ConversionOutput(markdown="", images=[])
+
+        result = task.result()
         return ConversionOutput(markdown=result.markdown, images=result.images)
 
     logger.info("Conversion router configured")

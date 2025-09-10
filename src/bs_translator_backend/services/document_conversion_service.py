@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Any, BinaryIO, final
 
 import httpx
-from fastapi import UploadFile, status
+from fastapi import status
+from starlette.datastructures import UploadFile
 
 from bs_translator_backend.models.app_config import AppConfig
 from bs_translator_backend.models.conversion_result import Base64EncodedImage, ConversionResult
@@ -48,6 +49,8 @@ def get_mimetype(path_source: Path) -> str:
         ".webp": "image/webp",
         ".txt": "text/plain",
     }
+
+    logger.info(f"Determined MIME type '{mimetypes.get(extension, 'invalid')}' for extension '{extension}' annd path '{path_source}'")
     return mimetypes.get(extension, "invalid")
 
 
@@ -90,17 +93,17 @@ def extract_docling_document(response: str, logger_context: dict[str, Any]) -> D
 class DocumentConversionService:
     def __init__(self, config: AppConfig) -> None:
         self.config = config
-        self.client = httpx.Client(timeout=30.0)
+        self.client = httpx.AsyncClient(timeout=30.0)
 
-    def __del__(self) -> None:
-        self.client.close()
+    async def __del__(self) -> None:
+        await self.client.aclose()
 
-    def fetch_docling_file_convert(
+    async def fetch_docling_file_convert(
         self,
         files: Mapping[str, tuple[str, BinaryIO | BytesIO, str]],
         options: dict[str, str | list[str] | bool],
     ) -> httpx.Response:
-        response = self.client.post(
+        response = await self.client.post(
             self.config.docling_url + "/convert/file",
             files=files,
             data=options,
@@ -129,7 +132,7 @@ class DocumentConversionService:
                     "debugMessage": "Binary data in error response",
                 }) from e
 
-    def convert_to_docling(self, file: UploadFile | BytesIO, source_lang: LanguageOrAuto, filename: str | None = None, content_type: str | None = None) -> DoclingDocument:
+    async def convert_to_docling(self, file: UploadFile | BytesIO, source_lang: LanguageOrAuto, filename: str | None = None, content_type: str | None = None) -> DoclingDocument:
         languages = [source_lang.value]
 
         if source_lang == DetectLanguage.AUTO:
@@ -163,7 +166,7 @@ class DocumentConversionService:
 
         logger_context = {"options": options, "content_type": content_type}
 
-        response = self.fetch_docling_file_convert(files, options)
+        response = await self.fetch_docling_file_convert(files, options)
         json_response = response.json()
 
         document = extract_docling_document(json_response, logger_context)
@@ -182,19 +185,23 @@ class DocumentConversionService:
             return DoclingDocument.model_validate(document.json_content)
         return document.json_content
 
-    def convert(self, file: UploadFile | BytesIO, source_lang: LanguageOrAuto, filename: str | None = None, content_type: str | None = None) -> ConversionResult:
+    async def convert(self, file: UploadFile | BytesIO, source_lang: LanguageOrAuto, filename: str | None = None, content_type: str | None = None) -> ConversionResult:
         languages = [source_lang.value]
 
         if source_lang == DetectLanguage.AUTO:
             languages = ["de", "en", "fr", "it"]
 
+        logger.info(f"type of file: {type(file)}")
+
         # Handle both UploadFile and BytesIO cases
         if isinstance(file, UploadFile):
             content = file.file.read()
-            filename = filename or file.filename or "uploaded_document"
+            filename = file.filename or "uploaded_document"
+            logger.info(f"Filename from UploadFile: {filename}")
             if content_type is None:
                 content_type = get_mimetype(Path(filename))
         else:
+            logger.info("File is not an UploadFile instance")
             # It's a BytesIO object
             content = file.read()
             filename = filename or "uploaded_document"
@@ -214,7 +221,7 @@ class DocumentConversionService:
             "pdf_backend": "pypdfium2",
         }
 
-        response = self.fetch_docling_file_convert(files, options)
+        response = await self.fetch_docling_file_convert(files, options)
         json_response = response.json()
         docling_response = extract_docling_document(
             json_response, logger_context={"options": options, "content_type": content_type}

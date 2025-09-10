@@ -6,7 +6,7 @@ It provides endpoints for retrieving supported languages and translating
 text with customizable parameters.
 """
 import json
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator
 from typing import Annotated
 
 from dependency_injector.wiring import Provide, inject
@@ -19,7 +19,6 @@ from bs_translator_backend.models.translation_config import TranslationConfig
 from bs_translator_backend.models.translation_input import TranslationInput
 from bs_translator_backend.services.translation_service import TranslationService
 from bs_translator_backend.services.usage_tracking_service import UsageTrackingService
-from bs_translator_backend.utils.cancelation import cancel_on_disconnect
 from bs_translator_backend.utils.logger import get_logger
 
 logger = get_logger("translation_router")
@@ -54,6 +53,7 @@ def create_router(
 
     @router.post("/text", summary="Translate text")
     def translate_text(
+        request: Request,
         translation_input: TranslationInput, x_client_id: Annotated[str | None, Header()]
     ) -> StreamingResponse:
         """
@@ -76,10 +76,14 @@ def create_router(
             tone=translation_input.config.tone,
         )
 
-        def generate_translation() -> Generator[str, None, None]:
-            yield from translation_service.translate_text(
-                translation_input.text, translation_input.config
-            )
+        async def generate_translation() -> AsyncGenerator[str, None]:
+            for chunk in translation_service.translate_text(
+                 translation_input.text, translation_input.config
+            ):
+                if await request.is_disconnected():
+                    logger.info("Client disconnected, stopping translation stream")
+                    break
+                yield chunk
 
         return StreamingResponse(generate_translation(), media_type="text/plain")
 
@@ -101,37 +105,36 @@ def create_router(
         Returns:
             StreamingResponse: Streaming response with translated text
         """
-        async with cancel_on_disconnect(request):
-            config = TranslationConfig.model_validate_json(translation_config)
+        config = TranslationConfig.model_validate_json(translation_config)
 
-            usage_tracking_service.log_event(
-                __name__,
-                translate_image.__name__,
-                user_id=x_client_id,
-                target_language=str(config.target_language),
-                source_language=str(config.source_language),
-            )
+        usage_tracking_service.log_event(
+            __name__,
+            translate_image.__name__,
+            user_id=x_client_id,
+            target_language=str(config.target_language),
+            source_language=str(config.source_language),
+        )
 
-            # Read the file content once to avoid issues with file being closed in streaming context
-            try:
-                file_content = image_file.file.read()
-                from io import BytesIO
-                file_stream = BytesIO(file_content)
-                filename = image_file.filename
-                content_type = image_file.content_type
-            except Exception:
-                logger.exception("Failed to read uploaded file")
-                raise
+        # Read the file content once to avoid issues with file being closed in streaming context
+        try:
+            file_content = image_file.file.read()
+            from io import BytesIO
+            file_stream = BytesIO(file_content)
+            filename = image_file.filename
+            content_type = image_file.content_type
+        except Exception:
+            logger.exception("Failed to read uploaded file")
+            raise
 
-            def generate_translation() -> Generator[str, None, None]:
-                for translation in translation_service.translate_image(file_stream, config, filename, content_type):
-                    if request.is_disconnected():
-                        logger.info("Client disconnected, stopping translation stream")
-                        break
+        async def generate_translation() -> AsyncGenerator[str, None]:
+            async for translation in translation_service.translate_image(file_stream, config, filename, content_type):
+                if await request.is_disconnected():
+                    logger.info("Client disconnected, stopping translation stream")
+                    break
 
-                    yield translation.model_dump_json()
+                yield translation.model_dump_json()
 
-            return StreamingResponse(generate_translation(), media_type="text/plain")
+        return StreamingResponse(generate_translation(), media_type="text/plain")
 
     logger.info("Translation router configured")
     return router
