@@ -1,8 +1,8 @@
 services:
-  vllm_qwen3_32B:
+  vllm_qwen3_32B2:
     platform: linux/amd64
     image: vllm/vllm-openai:v0.10.1
-    container_name: vllm_qwen3_32B
+    container_name: vllm_qwen3_32B2
     ports:
       - ${LLM_API_PORT}:8000
     environment:
@@ -13,7 +13,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: [ '1' ]
+              device_ids: [ '0' ]
               capabilities: [ gpu ]
     ipc: host
     volumes:
@@ -31,6 +31,38 @@ services:
       --reasoning-parser qwen3
       --uvicorn-log-level warning
       --disable-log-requests
+  
+  faster_whisper:
+    build:
+      context: https://github.com/DCC-BS/bentoml-faster-whisper.git
+      dockerfile: ./Dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64
+    ports:
+      - '50001:50001'
+    environment:
+      - http_proxy
+      - HTTP_PROXY
+      - https_proxy
+      - HTTPS_PROXY
+      - no_proxy
+      - NO_PROXY
+      - TIMEOUT
+      - MAX_CONCURRENCY
+      - MAX_BATCH_SIZE
+      - MAX_LATENCY_MS
+      - HF_AUTH_TOKEN=${HUGGING_FACE_HUB_TOKEN}
+    volumes:
+      - hugging_face_cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          memory: 16g
+          devices:
+            - driver: nvidia
+              device_ids: [ '1' ]
+              capabilities: [ gpu ]
   docling-serve:
     image: quay.io/docling-project/docling-serve-cu124:latest
     container_name: docling-serve
@@ -39,7 +71,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: [ '0' ]
+              device_ids: [ '1' ]
               capabilities: [gpu]
     ports:
       - "8004:5001"
@@ -56,3 +88,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
+
+volumes:
+  hugging_face_cache:
