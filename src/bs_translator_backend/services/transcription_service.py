@@ -1,5 +1,5 @@
 from collections.abc import AsyncGenerator
-from io import BytesIO
+from typing import IO
 
 import httpx
 
@@ -12,15 +12,15 @@ class TranscriptionService:
         self.config = config
         self.client = httpx.AsyncClient()
 
-    async def transcribe(self, audio_file: bytes, language: LanguageOrAuto) -> AsyncGenerator[str, None]:
+    async def transcribe(self, audio_file: "IO[bytes]", language: LanguageOrAuto) -> AsyncGenerator[str, None]:
         lang = None if language == DetectLanguage.AUTO else language.value
 
         async with self.client.stream(
             "POST",
             f"{self.config.whisper_url}/audio/transcriptions/stream",
-            files={"file": BytesIO(audio_file)},
+            files={"file": audio_file},
             data={"response_format": "text", "language": lang},
-            timeout=None,
+            timeout=300,
         ) as response:
             async for chunk in response.aiter_text():
                 yield chunk[6:]

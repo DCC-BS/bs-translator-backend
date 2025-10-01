@@ -1,10 +1,4 @@
-"""
-Translation API Router
-
-This module defines the FastAPI routes for text translation services.
-It provides endpoints for retrieving supported languages and translating
-text with customizable parameters.
-"""
+import io
 from typing import Annotated
 
 from dependency_injector.wiring import Provide, inject
@@ -30,7 +24,10 @@ def create_router(
     Create and configure the transcription API router.
 
     Args:
-        transcription_service: Injected transcription service instance
+        request: The incoming request object, used to check for client disconnects.
+        audio_file: Uploaded audio file to transcribe.
+        x_client_id: Optional client identifier for usage tracking.
+        language: Language of the audio file, or 'auto' to detect.
 
     Returns:
         APIRouter: Configured router with transcription endpoints
@@ -59,10 +56,11 @@ def create_router(
             __name__, transcribe_audio.__name__, user_id=x_client_id, file_size=audio_file.size
         )
 
-        content = audio_file.file.read()
+        content = await audio_file.read()
+        buffer = io.BytesIO(content)
 
         async def stream_response():
-            async for chunk in transcription_service.transcribe(content, language):
+            async for chunk in transcription_service.transcribe(buffer, language):
                 if await request.is_disconnected():
                     logger.info("Client disconnected, stopping transcription stream")
                     break
