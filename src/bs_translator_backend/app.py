@@ -6,7 +6,7 @@ from bs_translator_backend.container import Container
 from bs_translator_backend.models.app_config import AppConfig
 from bs_translator_backend.models.error_codes import UNEXPECTED_ERROR
 from bs_translator_backend.models.error_response import ApiErrorException
-from bs_translator_backend.routers import convert_route, translation_route
+from bs_translator_backend.routers import convert_route, translation_route, transcription_route
 from bs_translator_backend.utils.load_env import load_env
 from bs_translator_backend.utils.logger import get_logger, init_logger
 
@@ -59,7 +59,7 @@ def create_app() -> FastAPI:
     # Set up dependency injection container
     logger.debug("Configuring dependency injection container")
     container = Container(app_config=AppConfig.from_env())
-    container.wire(modules=[translation_route, convert_route])
+    container.wire(modules=[translation_route, convert_route, transcription_route])
     container.check_dependencies()
     logger.info("Dependency injection configured")
 
@@ -82,6 +82,7 @@ def create_app() -> FastAPI:
     logger.debug("Registering API routers")
     app.include_router(translation_route.create_router())
     app.include_router(convert_route.create_router())
+    app.include_router(transcription_route.create_router())
     logger.info("All routers registered")
 
     logger.info("API setup complete")

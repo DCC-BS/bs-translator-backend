@@ -1,11 +1,3 @@
-"""
-Document Conversion API Router
-
-This module defines the FastAPI routes for document conversion services.
-It provides endpoints for converting various document formats (PDF, DOCX)
-to markdown with image extraction capabilities.
-"""
-
 import asyncio
 from typing import Annotated
 

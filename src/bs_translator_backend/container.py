@@ -8,6 +8,7 @@ from bs_translator_backend.services.llm_facade import LLMFacade
 from bs_translator_backend.services.text_chunk_service import TextChunkService
 from bs_translator_backend.services.translation_service import TranslationService
 from bs_translator_backend.services.usage_tracking_service import UsageTrackingService
+from bs_translator_backend.services.transcription_service import TranscriptionService
 
 
 class Container(containers.DeclarativeContainer):
@@ -41,5 +42,10 @@ class Container(containers.DeclarativeContainer):
 
     usage_tracking_service: providers.Singleton[UsageTrackingService] = providers.Singleton(
         UsageTrackingService,
+        config=app_config,
+    )
+
+    transcription_service = providers.Singleton(
+        TranscriptionService,
         config=app_config,
     )

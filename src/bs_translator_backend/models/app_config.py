@@ -29,6 +29,8 @@ class AppConfig(BaseModel):
     docling_url: str = Field(description="The URL for the Docling service")
     hmac_secret: str = Field(description="The secret key for HMAC authentication")
 
+    whisper_url: str = Field(description="The URL for the Whisper API")
+
     @classmethod
     def from_env(cls) -> "AppConfig":
         openai_api_base_url: str = get_env_or_throw("OPENAI_API_BASE_URL")
@@ -37,6 +39,7 @@ class AppConfig(BaseModel):
         client_url: str = get_env_or_throw("CLIENT_URL")
         docling_url: str = get_env_or_throw("DOCLING_URL")
         hmac_secret: str = get_env_or_throw("HMAC_SECRET")
+        whisper_url: str = get_env_or_throw("WHISPER_URL")
         return cls(
             openai_api_base_url=openai_api_base_url,
             openai_api_key=openai_api_key,
@@ -44,6 +47,7 @@ class AppConfig(BaseModel):
             client_url=client_url,
             docling_url=docling_url,
             hmac_secret=hmac_secret,
+            whisper_url=whisper_url,
         )
 
     # def __str__(self) -> str:

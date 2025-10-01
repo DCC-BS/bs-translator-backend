@@ -1,11 +1,3 @@
-"""
-Translation API Router
-
-This module defines the FastAPI routes for text translation services.
-It provides endpoints for retrieving supported languages and translating
-text with customizable parameters.
-"""
-import json
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
