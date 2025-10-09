@@ -3,6 +3,8 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
+
 COPY uv.lock /app/uv.lock
 COPY pyproject.toml /app/pyproject.toml
 
