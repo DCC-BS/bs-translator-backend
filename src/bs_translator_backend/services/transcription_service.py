@@ -12,7 +12,9 @@ class TranscriptionService:
         self.config = config
         self.client = httpx.AsyncClient()
 
-    async def transcribe(self, audio_file: "IO[bytes]", language: LanguageOrAuto) -> AsyncGenerator[str, None]:
+    async def transcribe(
+        self, audio_file: "IO[bytes]", language: LanguageOrAuto
+    ) -> AsyncGenerator[str, None]:
         lang = None if language == DetectLanguage.AUTO else language.value
 
         async with self.client.stream(

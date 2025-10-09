@@ -6,7 +6,7 @@ from bs_translator_backend.container import Container
 from bs_translator_backend.models.app_config import AppConfig
 from bs_translator_backend.models.error_codes import UNEXPECTED_ERROR
 from bs_translator_backend.models.error_response import ApiErrorException
-from bs_translator_backend.routers import convert_route, translation_route, transcription_route
+from bs_translator_backend.routers import convert_route, transcription_route, translation_route
 from bs_translator_backend.utils.load_env import load_env
 from bs_translator_backend.utils.logger import get_logger, init_logger
 

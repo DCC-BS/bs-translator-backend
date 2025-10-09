@@ -132,7 +132,11 @@ class TranslationService:
             yield "\r"
 
     async def translate_image(
-        self, image: UploadFile | BytesIO, config: TranslationConfig, filename: str | None = None, content_type: str | None = None
+        self,
+        image: UploadFile | BytesIO,
+        config: TranslationConfig,
+        filename: str | None = None,
+        content_type: str | None = None,
     ) -> AsyncGenerator[ConversionImageTextEntry, None]:
         doc = await self.conversion_service.convert_to_docling(
             image, config.source_language or DetectLanguage.AUTO, filename, content_type

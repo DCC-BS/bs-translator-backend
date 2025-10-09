@@ -30,7 +30,7 @@ logger.info("Test started")
 def app_config() -> AppConfig:
     load_env()
     return AppConfig.from_env()
- 
+
 
 @pytest.mark.asyncio
 async def test_image_translate_with_overlay(app_config: AppConfig) -> None:
@@ -125,7 +125,7 @@ async def test_translation_bbox_coordinates(app_config: AppConfig) -> None:
             assert entry.bbox.top >= 0
             assert entry.bbox.right > entry.bbox.left
             # Handle different coordinate origins - in BOTTOMLEFT origin, bottom can be less than top
-            if hasattr(entry.bbox, 'coord_origin') and entry.bbox.coord_origin == 'BOTTOMLEFT':
+            if hasattr(entry.bbox, "coord_origin") and entry.bbox.coord_origin == "BOTTOMLEFT":
                 assert entry.bbox.bottom < entry.bbox.top  # For bottom-left origin
             else:
                 assert entry.bbox.bottom > entry.bbox.top  # For top-left origin

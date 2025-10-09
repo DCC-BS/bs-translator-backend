@@ -40,7 +40,10 @@ def create_router(
         request: Request,
         audio_file: UploadFile,
         x_client_id: Annotated[str | None, Header()],
-        language: Annotated[LanguageOrAuto, Form(title="Language", description="Language of the audio file", example=Field)] = DetectLanguage.AUTO,
+        language: Annotated[
+            LanguageOrAuto,
+            Form(title="Language", description="Language of the audio file", example=Field),
+        ] = DetectLanguage.AUTO,
     ) -> StreamingResponse:
         """
         Transcribe the provided audio file.

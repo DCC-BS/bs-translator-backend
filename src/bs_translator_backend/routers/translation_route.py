@@ -17,7 +17,7 @@ logger = get_logger("translation_router")
 
 
 @inject
-def create_router(
+def create_router(  # noqa: C901
     translation_service: TranslationService = Provide[Container.translation_service],
     usage_tracking_service: UsageTrackingService = Provide[Container.usage_tracking_service],
 ) -> APIRouter:
@@ -46,7 +46,8 @@ def create_router(
     @router.post("/text", summary="Translate text")
     def translate_text(
         request: Request,
-        translation_input: TranslationInput, x_client_id: Annotated[str | None, Header()]
+        translation_input: TranslationInput,
+        x_client_id: Annotated[str | None, Header()],
     ) -> StreamingResponse:
         """
         Translate the provided text using the specified configuration.
@@ -70,7 +71,7 @@ def create_router(
 
         async def generate_translation() -> AsyncGenerator[str, None]:
             for chunk in translation_service.translate_text(
-                 translation_input.text, translation_input.config
+                translation_input.text, translation_input.config
             ):
                 if await request.is_disconnected():
                     logger.info("Client disconnected, stopping translation stream")
@@ -84,7 +85,7 @@ def create_router(
         request: Request,
         image_file: UploadFile,
         x_client_id: Annotated[str | None, Header()],
-        translation_config: Annotated[str, Form()] = "{\"target_language\": \"de\"}"
+        translation_config: Annotated[str, Form()] = '{"target_language": "de"}',
     ) -> StreamingResponse:
         """
         Translate text within an uploaded image file.
@@ -111,6 +112,7 @@ def create_router(
         try:
             file_content = image_file.file.read()
             from io import BytesIO
+
             file_stream = BytesIO(file_content)
             filename = image_file.filename
             content_type = image_file.content_type
@@ -119,7 +121,9 @@ def create_router(
             raise
 
         async def generate_translation() -> AsyncGenerator[str, None]:
-            async for translation in translation_service.translate_image(file_stream, config, filename, content_type):
+            async for translation in translation_service.translate_image(
+                file_stream, config, filename, content_type
+            ):
                 if await request.is_disconnected():
                     logger.info("Client disconnected, stopping translation stream")
                     break

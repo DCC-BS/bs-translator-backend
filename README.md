@@ -40,7 +40,7 @@ Create a `.env` file in the project root with the required environment variables
 
 ```env
 # Hugging Face Configuration
-HUGGING_FACE_HUB_TOKEN=your_hugging_face_token_here
+HF_AUTH_TOKEN=your_hugging_face_token_here
 HUGGING_FACE_CACHE_DIR=~/.cache/huggingface
 
 # LLM Service Configuration
@@ -54,7 +54,7 @@ CLIENT_PORT=3000
 CLIENT_URL=http://localhost:${CLIENT_PORT}
 ```
 
-> **Note:** The `HUGGING_FACE_HUB_TOKEN` is required for Hugging Face API access. You can create a token [here](https://huggingface.co/settings/tokens).
+> **Note:** The `HF_AUTH_TOKEN` is required for Hugging Face API access. You can create a token [here](https://huggingface.co/settings/tokens).
 
 ### Install Dependencies
 

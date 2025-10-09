@@ -50,7 +50,9 @@ def get_mimetype(path_source: Path) -> str:
         ".txt": "text/plain",
     }
 
-    logger.info(f"Determined MIME type '{mimetypes.get(extension, 'invalid')}' for extension '{extension}' annd path '{path_source}'")
+    logger.info(
+        f"Determined MIME type '{mimetypes.get(extension, 'invalid')}' for extension '{extension}' and path '{path_source}'"
+    )
     return mimetypes.get(extension, "invalid")
 
 
@@ -132,7 +134,13 @@ class DocumentConversionService:
                     "debugMessage": "Binary data in error response",
                 }) from e
 
-    async def convert_to_docling(self, file: UploadFile | BytesIO, source_lang: LanguageOrAuto, filename: str | None = None, content_type: str | None = None) -> DoclingDocument:
+    async def convert_to_docling(
+        self,
+        file: UploadFile | BytesIO,
+        source_lang: LanguageOrAuto,
+        filename: str | None = None,
+        content_type: str | None = None,
+    ) -> DoclingDocument:
         languages = [source_lang.value]
 
         if source_lang == DetectLanguage.AUTO:
@@ -185,7 +193,13 @@ class DocumentConversionService:
             return DoclingDocument.model_validate(document.json_content)
         return document.json_content
 
-    async def convert(self, file: UploadFile | BytesIO, source_lang: LanguageOrAuto, filename: str | None = None, content_type: str | None = None) -> ConversionResult:
+    async def convert(
+        self,
+        file: UploadFile | BytesIO,
+        source_lang: LanguageOrAuto,
+        filename: str | None = None,
+        content_type: str | None = None,
+    ) -> ConversionResult:
         languages = [source_lang.value]
 
         if source_lang == DetectLanguage.AUTO:
