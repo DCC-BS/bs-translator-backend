@@ -6,9 +6,9 @@ from bs_translator_backend.services.custom_llms.qwen3 import QwenVllm
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService
 from bs_translator_backend.services.llm_facade import LLMFacade
 from bs_translator_backend.services.text_chunk_service import TextChunkService
+from bs_translator_backend.services.transcription_service import TranscriptionService
 from bs_translator_backend.services.translation_service import TranslationService
 from bs_translator_backend.services.usage_tracking_service import UsageTrackingService
-from bs_translator_backend.services.transcription_service import TranscriptionService
 
 
 class Container(containers.DeclarativeContainer):
