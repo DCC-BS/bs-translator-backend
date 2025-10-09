@@ -6,15 +6,15 @@ services:
     ports:
       - ${LLM_API_PORT}:8000
     environment:
-      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
+      - HF_AUTH_TOKEN=${HF_AUTH_TOKEN}
     runtime: nvidia
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: [ '0' ]
-              capabilities: [ gpu ]
+              device_ids: ["0"]
+              capabilities: [gpu]
     ipc: host
     volumes:
       - ${HUGGING_FACE_CACHE_DIR}:/root/.cache/huggingface
@@ -31,7 +31,7 @@ services:
       --reasoning-parser qwen3
       --uvicorn-log-level warning
       --disable-log-requests
-  
+
   faster_whisper:
     build:
       context: https://github.com/DCC-BS/bentoml-faster-whisper.git
@@ -40,7 +40,7 @@ services:
         - linux/amd64
         - linux/arm64
     ports:
-      - '50001:50001'
+      - "50001:50001"
     environment:
       - http_proxy
       - HTTP_PROXY
@@ -52,7 +52,7 @@ services:
       - MAX_CONCURRENCY
       - MAX_BATCH_SIZE
       - MAX_LATENCY_MS
-      - HF_AUTH_TOKEN=${HUGGING_FACE_HUB_TOKEN}
+      - HF_AUTH_TOKEN=${HF_AUTH_TOKEN}
     volumes:
       - hugging_face_cache:/root/.cache/huggingface
     deploy:
@@ -61,17 +61,17 @@ services:
           memory: 16g
           devices:
             - driver: nvidia
-              device_ids: [ '1' ]
-              capabilities: [ gpu ]
-  docling-serve:
+              device_ids: ["1"]
+              capabilities: [gpu]
+  docling-serve-translator:
     image: quay.io/docling-project/docling-serve-cu124:latest
-    container_name: docling-serve
+    container_name: docling-serve-translator
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: [ '1' ]
+              device_ids: ["1"]
               capabilities: [gpu]
     ports:
       - "8004:5001"
