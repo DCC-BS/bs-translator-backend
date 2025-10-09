@@ -51,7 +51,7 @@ def get_mimetype(path_source: Path) -> str:
     }
 
     logger.info(
-        f"Determined MIME type '{mimetypes.get(extension, 'invalid')}' for extension '{extension}' annd path '{path_source}'"
+        f"Determined MIME type '{mimetypes.get(extension, 'invalid')}' for extension '{extension}' and path '{path_source}'"
     )
     return mimetypes.get(extension, "invalid")
 
