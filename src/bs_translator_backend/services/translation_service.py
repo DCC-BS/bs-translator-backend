@@ -31,7 +31,7 @@ Requirements:
     2. Fluency: The translated text should be natural and fluent in the target language.
     3. Style: Maintain the original style and tone of the text as much as possible.
     4. Context: Consider the context provided when translating.
-    5. No Unnecessary Translations: Do not translate proper nouns like names (e.g., "Yanick Schraner"), brands (e.g., "Apple"), places (e.g., "Basel-Stadt"), dates, addresses, URLs, email addresses, phone numbers, or any element that would lose its meaning or functionality if translated. These should remain in their original form.
+    5. No Unnecessary Translations: Do not translate proper nouns like names (e.g., "Max Mustermann"), brands (e.g., "Apple"), places (e.g., "Basel-Stadt"), dates, addresses, URLs, email addresses, phone numbers, or any element that would lose its meaning or functionality if translated. These should remain in their original form.
     6. Idioms and Cultural References: Adapt idiomatic expressions and culturally specific references to their equivalents in the target language to maintain meaning and readability.
     7. Source Text Errors: If there are any obvious errors or typos in the source text, correct them in the translation to improve clarity.
     8. Formatting: Preserve the original markdown formatting of the text, including line breaks, bullet points, and any emphasis like bold or italics.
