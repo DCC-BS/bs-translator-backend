@@ -166,6 +166,7 @@ class DocumentConversionService:
             "to_formats": ["json"],
             "image_export_mode": "embedded",
             "do_ocr": True,
+            "images_scale": "1",
             "ocr_engine": "easyocr",
             "ocr_lang": languages,
             "table_mode": "accurate",
@@ -226,6 +227,7 @@ class DocumentConversionService:
 
         files = {"files": (filename, BytesIO(content), content_type)}
         options: dict[str, str | list[str] | bool] = {
+            "images_scale": "1",
             "to_formats": ["md", "json"],
             "image_export_mode": "embedded",
             "do_ocr": True,
