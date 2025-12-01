@@ -150,6 +150,9 @@ _LANGUAGE_NAMES = {
     Language.ZH_TW: "Chinese (Traditional)",
 }
 
+# Type alias for Pydantic compatibility - accepts Language enum or DetectLanguage class
+LanguageOrAuto = Language | DetectLanguage
+
 
 def get_language_name(language: LanguageOrAuto | None) -> str:
     """
@@ -167,20 +170,16 @@ def get_language_name(language: LanguageOrAuto | None) -> str:
     Examples:
         >>> get_language_name(Language.EN)
         'English'
-        >>> get_language_name("de")
-        'German'
+        >>> get_language_name(DetectLanguage.AUTO)
+        'auto-detected'
     """
-    # Convert string to Language enum if necessary
+    # Handle auto-detection and None cases
     if isinstance(language, DetectLanguage) or language is None:
-        name = "auto-detected"
+        return "auto-detected"
 
-    # Look up the language name
-    name = _LANGUAGE_NAMES.get(Language(language))
+    # Look up the language name (language is now guaranteed to be Language enum)
+    name = _LANGUAGE_NAMES.get(language)
     if name is None:
         raise ValueError(f"Language name not found for: {language}") from None
 
     return name
-
-
-# Type alias for Pydantic compatibility - accepts Language enum or DetectLanguage class
-LanguageOrAuto = Language | DetectLanguage
