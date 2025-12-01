@@ -30,6 +30,8 @@ class Language(Enum):
     DE = "de"  # German
     EL = "el"  # Greek
     EN = "en"  # English
+    EN_GB = "en-gb"  # English (United Kingdom)
+    EN_US = "en-us"  # English (United States)
     ES = "es"  # Spanish
     ET = "et"  # Estonian
     FA = "fa"  # Persian
@@ -85,6 +87,99 @@ class DetectLanguage(Enum):
     """
 
     AUTO = "auto"
+
+
+# Mapping of language codes to their full names
+_LANGUAGE_NAMES = {
+    Language.AF: "Afrikaans",
+    Language.AR: "Arabic",
+    Language.BG: "Bulgarian",
+    Language.BN: "Bengali",
+    Language.CA: "Catalan",
+    Language.CS: "Czech",
+    Language.CY: "Welsh",
+    Language.DA: "Danish",
+    Language.DE: "German",
+    Language.EL: "Greek",
+    Language.EN: "English",
+    Language.EN_GB: "English (United Kingdom)",
+    Language.EN_US: "English (United States)",
+    Language.ES: "Spanish",
+    Language.ET: "Estonian",
+    Language.FA: "Persian",
+    Language.FI: "Finnish",
+    Language.FR: "French",
+    Language.GU: "Gujarati",
+    Language.HE: "Hebrew",
+    Language.HI: "Hindi",
+    Language.HR: "Croatian",
+    Language.HU: "Hungarian",
+    Language.ID: "Indonesian",
+    Language.IT: "Italian",
+    Language.JA: "Japanese",
+    Language.KN: "Kannada",
+    Language.KO: "Korean",
+    Language.LT: "Lithuanian",
+    Language.LV: "Latvian",
+    Language.MK: "Macedonian",
+    Language.ML: "Malayalam",
+    Language.MR: "Marathi",
+    Language.NE: "Nepali",
+    Language.NL: "Dutch",
+    Language.NO: "Norwegian",
+    Language.PA: "Punjabi",
+    Language.PL: "Polish",
+    Language.PT: "Portuguese",
+    Language.RO: "Romanian",
+    Language.RU: "Russian",
+    Language.SK: "Slovak",
+    Language.SL: "Slovenian",
+    Language.SO: "Somali",
+    Language.SQ: "Albanian",
+    Language.SV: "Swedish",
+    Language.SW: "Swahili",
+    Language.TA: "Tamil",
+    Language.TE: "Telugu",
+    Language.TH: "Thai",
+    Language.TL: "Filipino",
+    Language.TR: "Turkish",
+    Language.UK: "Ukrainian",
+    Language.UR: "Urdu",
+    Language.VI: "Vietnamese",
+    Language.ZH_CN: "Chinese (Simplified)",
+    Language.ZH_TW: "Chinese (Traditional)",
+}
+
+
+def get_language_name(language: LanguageOrAuto | None) -> str:
+    """
+    Get the human-readable name for a given language code.
+
+    Args:
+        language: A Language enum member or DetectLanguage enum member
+
+    Returns:
+        The full name of the language (e.g., "English", "German")
+
+    Raises:
+        ValueError: If the language code is not recognized
+
+    Examples:
+        >>> get_language_name(Language.EN)
+        'English'
+        >>> get_language_name("de")
+        'German'
+    """
+    # Convert string to Language enum if necessary
+    if isinstance(language, DetectLanguage) or language is None:
+        name = "auto-detected"
+
+    # Look up the language name
+    name = _LANGUAGE_NAMES.get(Language(language))
+    if name is None:
+        raise ValueError(f"Language name not found for: {language}") from None
+
+    return name
 
 
 # Type alias for Pydantic compatibility - accepts Language enum or DetectLanguage class
