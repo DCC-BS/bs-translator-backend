@@ -1,6 +1,6 @@
 [project]
 name = "bs-translator-backend"
-dynamic = ["version"]
+version = "0.0.1"
 authors = [{name = "Data Competence Center Basel-Stadt", email = "dcc@bs.ch" },{ name = "Tobias Bollinger", email = "tobias.bollinger@bs.ch" }]
 readme = "README.md"
 keywords = ['python']
@@ -28,7 +28,6 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "returns>=0.26.0",
     "structlog>=25.1.0",
-    "version-pioneer>=0.0.13",
 ]
 
 [project.urls]
@@ -52,9 +51,6 @@ dev = [
 [build-system]
 requires = ["hatchling","version-pioneer>=0.0.13"]
 build-backend = "hatchling.build"
-
-[tool.hatch.version]
-source = "version-pioneer"
 
 [tool.version-pioneer]
 versionscript = "src/bs_translator_backend/_version.py"  # Where to "read" the Version-Pioneer script (to execute `get_version_dict()`).
