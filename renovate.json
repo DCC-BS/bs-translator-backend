@@ -5,10 +5,10 @@
     "config:recommended"
   ],
   "forkProcessing": "enabled",
+  "internalChecksFilter": "strict",
   "labels": [
     "renovate"
   ],
-  "internalChecksFilter": "strict",
   "minimumReleaseAge": "14 days",
   "packageRules": [
     {

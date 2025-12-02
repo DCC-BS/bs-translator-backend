@@ -49,7 +49,7 @@ async def test_image_translate_with_overlay(app_config: AppConfig) -> None:
 
         # Collect all translation entries
         translation_entries = []
-        for entry in translation_service.translate_image(upload_file, translate_config):
+        async for entry in translation_service.translate_image(upload_file, translate_config):
             logger.info(f"Original: {entry.original}")
             logger.info(f"Translated: {entry.translated}")
             logger.info(f"BBox: {entry.bbox}")
@@ -112,7 +112,7 @@ async def test_translation_bbox_coordinates(app_config: AppConfig) -> None:
         upload_file = UploadFile(file=file, filename="ReportView.png", headers=headers)
         translate_config = TranslationConfig(source_language=Language.DE)
 
-        for entry in translation_service.translate_image(upload_file, translate_config):
+        async for entry in translation_service.translate_image(upload_file, translate_config):
             # Check that bbox coordinates are valid
             assert entry.bbox is not None
             assert hasattr(entry.bbox, "left")

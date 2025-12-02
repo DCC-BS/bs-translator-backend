@@ -45,7 +45,7 @@ async def test_image_translate(app_config: AppConfig) -> None:
         # Collect translation entries for potential image overlay
         translation_entries = []
 
-        for entry in translation_service.translate_image(upload_file, translate_config):
+        async for entry in translation_service.translate_image(upload_file, translate_config):
             logger.info(f"{entry.original} ==> {entry.translated} BBox: {entry.bbox}")
             translation_entries.append(entry)
 
