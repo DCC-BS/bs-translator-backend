@@ -21,7 +21,7 @@ from bs_translator_backend.models.error_codes import (
     UNEXPECTED_ERROR,
 )
 from bs_translator_backend.models.error_response import ApiErrorException
-from bs_translator_backend.models.langugage import DetectLanguage, LanguageOrAuto
+from bs_translator_backend.models.language import DetectLanguage, LanguageOrAuto
 from bs_translator_backend.utils.logger import get_logger
 
 logger = get_logger(__name__)

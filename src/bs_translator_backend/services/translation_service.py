@@ -17,7 +17,7 @@ from bs_translator_backend.models.conversion_result import (
     BBox,
     ConversionImageTextEntry,
 )
-from bs_translator_backend.models.langugage import DetectLanguage, Language, get_language_name
+from bs_translator_backend.models.language import DetectLanguage, Language, get_language_name
 from bs_translator_backend.models.translation_config import TranslationConfig
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService
 from bs_translator_backend.services.llm_facade import LLMFacade

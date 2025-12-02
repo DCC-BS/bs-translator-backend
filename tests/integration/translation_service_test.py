@@ -5,7 +5,7 @@ from fastapi import UploadFile
 from starlette.datastructures import Headers
 
 from bs_translator_backend.models.app_config import AppConfig
-from bs_translator_backend.models.langugage import Language
+from bs_translator_backend.models.language import Language
 from bs_translator_backend.models.translation_config import TranslationConfig
 from bs_translator_backend.services.custom_llms.qwen3 import QwenVllm
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService

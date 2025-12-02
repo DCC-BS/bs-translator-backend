@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import Field
 
 from bs_translator_backend.container import Container
-from bs_translator_backend.models.langugage import DetectLanguage, LanguageOrAuto
+from bs_translator_backend.models.language import DetectLanguage, LanguageOrAuto
 from bs_translator_backend.services.transcription_service import TranscriptionService
 from bs_translator_backend.services.usage_tracking_service import UsageTrackingService
 from bs_translator_backend.utils.logger import get_logger

@@ -5,9 +5,7 @@ This module tests the Language enum and related functionality,
 ensuring data integrity and proper configuration.
 """
 
-import pytest
-
-from bs_translator_backend.models.langugage import (
+from bs_translator_backend.models.language import (
     _LANGUAGE_NAMES,
     DetectLanguage,
     Language,

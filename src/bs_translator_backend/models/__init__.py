@@ -10,7 +10,7 @@ from .docling_response import (
     DocumentResponse,
     ErrorItem,
 )
-from .langugage import DetectLanguage, Language, LanguageOrAuto
+from .language import DetectLanguage, Language, LanguageOrAuto
 from .translation_config import TranslationConfig
 from .translation_input import TranslationInput
 
