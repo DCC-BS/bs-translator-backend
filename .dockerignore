@@ -1,0 +1,7 @@
+.github
+.vscode
+examples
+tests
+.env.example
+.env
+Makefile
