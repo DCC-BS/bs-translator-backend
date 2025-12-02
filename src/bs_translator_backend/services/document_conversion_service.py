@@ -145,6 +145,8 @@ class DocumentConversionService:
 
         if source_lang == DetectLanguage.AUTO:
             languages = ["de", "en", "fr", "it"]
+        elif source_lang.value.startswith("en"):
+            languages = ["en"]
 
         # Handle both UploadFile and BytesIO cases
         if isinstance(file, UploadFile):
