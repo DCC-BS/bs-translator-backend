@@ -1,8 +1,5 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "lockFileMaintenance": {
-    "enabled": true
-  },
   "dependencyDashboard": true,
   "extends": [
     "config:recommended"
@@ -12,6 +9,9 @@
   "labels": [
     "renovate"
   ],
+  "lockFileMaintenance": {
+    "enabled": true
+  },
   "minimumReleaseAge": "14 days",
   "packageRules": [
     {
