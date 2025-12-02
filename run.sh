@@ -1,14 +1,9 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
-# Default values
-DEV_MODE=false
-PORT=8000
-
-if [ -f .env ]; then
-    # Load environment variables from .env file
-    source .env
-fi
+# Default values (allow env overrides)
+DEV_MODE=${DEV_MODE:-false}
+PORT=${PORT:-8000}
 
 # Function to display help information
 show_help() {
@@ -28,21 +23,30 @@ show_help() {
 }
 
 # Parse command line arguments
-while [[ "$#" -gt 0 ]]; do
-    case $1 in
+while [ "$#" -gt 0 ]; do
+    case "$1" in
         --dev) DEV_MODE=true; shift ;;
         --port)
-            if [[ -z "$2" || "$2" =~ ^- ]]; then
+            if [ -z "${2:-}" ]; then
                 echo "Error: --port requires a numeric argument"
                 show_help
                 exit 1
             fi
-            if ! [[ "$2" =~ ^[0-9]+$ ]]; then
+            case "$2" in
+                ''|*[!0-9]*)
+                    echo "Error: port must be a valid number"
+                    show_help
+                    exit 1
+                    ;;
+            esac
+            if [ "$2" -lt 1 ] || [ "$2" -gt 65535 ]; then
                 echo "Error: port must be a valid number"
                 show_help
                 exit 1
             fi
-        PORT="$2"; shift 2 ;;
+            PORT="$2"
+            shift 2
+            ;;
         --help)
             show_help
             exit 0
@@ -58,8 +62,8 @@ done
 # Choose command based on dev mode
 if [ "$DEV_MODE" = true ]; then
     echo "Starting in development mode on port $PORT"
-    uv run fastapi dev ./src/bs_translator_backend/app.py --port "$PORT"
+    fastapi dev ./src/bs_translator_backend/app.py --port "$PORT"
 else
     echo "Starting in production mode on port $PORT"
-    uv run fastapi run ./src/bs_translator_backend/app.py --port "$PORT"
+    fastapi run ./src/bs_translator_backend/app.py --port "$PORT"
 fi

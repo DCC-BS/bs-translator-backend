@@ -8,7 +8,7 @@ tone, domain specialization, custom glossaries, and additional context.
 
 from pydantic import BaseModel, Field
 
-from bs_translator_backend.models.langugage import Language, LanguageOrAuto
+from bs_translator_backend.models.language import Language, LanguageOrAuto
 
 
 class TranslationConfig(BaseModel):

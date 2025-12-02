@@ -17,7 +17,7 @@ from bs_translator_backend.models.conversion_result import (
     BBox,
     ConversionImageTextEntry,
 )
-from bs_translator_backend.models.langugage import DetectLanguage, Language
+from bs_translator_backend.models.language import DetectLanguage, Language, get_language_name
 from bs_translator_backend.models.translation_config import TranslationConfig
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService
 from bs_translator_backend.services.llm_facade import LLMFacade
@@ -68,6 +68,8 @@ class TranslationService:
         tone_prompt = config.get_tone_prompt()
         domain_prompt = config.get_domain_prompt()
         glossary_prompt = config.get_glossary_prompt()
+        source_language_name = get_language_name(config.source_language)
+        target_language_name = get_language_name(config.target_language)
 
         context_section = f"Context: {config.context}\n\n" if config.context else ""
 
@@ -81,8 +83,8 @@ class TranslationService:
             Text to translate:
             {text}"""
         ).format(
-            source_language=config.source_language or "auto-detected",
-            target_language=config.target_language,
+            source_language=source_language_name,
+            target_language=target_language_name,
             context_section=context_section,
             domain_prompt=domain_prompt,
             tone_prompt=tone_prompt,

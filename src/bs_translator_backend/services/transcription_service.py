@@ -4,7 +4,7 @@ from typing import IO
 import httpx
 
 from bs_translator_backend.models.app_config import AppConfig
-from bs_translator_backend.models.langugage import DetectLanguage, LanguageOrAuto
+from bs_translator_backend.models.language import DetectLanguage, LanguageOrAuto
 
 
 class TranscriptionService:

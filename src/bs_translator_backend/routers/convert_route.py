@@ -6,7 +6,7 @@ from fastapi import APIRouter, Form, Header, Request, UploadFile
 
 from bs_translator_backend.container import Container
 from bs_translator_backend.models.conversion_result import ConversionOutput
-from bs_translator_backend.models.langugage import LanguageOrAuto
+from bs_translator_backend.models.language import LanguageOrAuto
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService
 from bs_translator_backend.services.usage_tracking_service import UsageTrackingService
 from bs_translator_backend.utils.logger import get_logger

@@ -4,7 +4,7 @@ dynamic = ["version"]
 authors = [{name = "Data Competence Center Basel-Stadt", email = "dcc@bs.ch" },{ name = "Tobias Bollinger", email = "tobias.bollinger@bs.ch" }]
 readme = "README.md"
 keywords = ['python']
-requires-python = ">=3.12,<4.0"
+requires-python = ">=3.12,<3.14"
 license = "MIT"
 license-files = ["LICEN[CS]E*"]
 classifiers = [
@@ -24,11 +24,9 @@ dependencies = [
     "langdetect>=1.0.9",
     "llama-index-core>=0.12.34.post1",
     "llama-index-llms-openai>=0.3.38",
-    "llama-index-llms-openai-like>=0.3.4",
-    "llama-index-readers-file>=0.4.7",
     "openai>=1.97.0",
     "python-dotenv>=1.0.1",
-    "returns[compatible-mypy]>=0.26.0",
+    "returns>=0.26.0",
     "structlog>=25.1.0",
     "version-pioneer>=0.0.13",
 ]
@@ -45,10 +43,10 @@ dev = [
     "pytest>=8.3.4",
     "pre-commit>=2.20.0",
     "tox-uv>=1.11.3",
-    "basedpyright>=1.27.1",
     "ruff>=0.9.2",
     "rich>=13.9.4",
     "pytest-asyncio>=1.1.0",
+    "pyrefly>=0.43.1",
 ]
 
 [build-system]

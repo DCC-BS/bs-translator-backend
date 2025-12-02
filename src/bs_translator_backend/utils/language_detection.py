@@ -1,7 +1,7 @@
 from langdetect import detect  # type: ignore[import-untyped]
 from returns.result import Failure, ResultE, Success, safe
 
-from bs_translator_backend.models.langugage import Language
+from bs_translator_backend.models.language import Language
 
 
 def detect_language(text: str) -> ResultE[Language]:

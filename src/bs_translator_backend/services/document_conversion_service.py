@@ -21,7 +21,7 @@ from bs_translator_backend.models.error_codes import (
     UNEXPECTED_ERROR,
 )
 from bs_translator_backend.models.error_response import ApiErrorException
-from bs_translator_backend.models.langugage import DetectLanguage, LanguageOrAuto
+from bs_translator_backend.models.language import DetectLanguage, LanguageOrAuto
 from bs_translator_backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -145,6 +145,8 @@ class DocumentConversionService:
 
         if source_lang == DetectLanguage.AUTO:
             languages = ["de", "en", "fr", "it"]
+        elif source_lang.value.startswith("en"):
+            languages = ["en"]
 
         # Handle both UploadFile and BytesIO cases
         if isinstance(file, UploadFile):
@@ -166,6 +168,7 @@ class DocumentConversionService:
             "to_formats": ["json"],
             "image_export_mode": "embedded",
             "do_ocr": True,
+            "images_scale": "1",
             "ocr_engine": "easyocr",
             "ocr_lang": languages,
             "table_mode": "accurate",
@@ -226,6 +229,7 @@ class DocumentConversionService:
 
         files = {"files": (filename, BytesIO(content), content_type)}
         options: dict[str, str | list[str] | bool] = {
+            "images_scale": "1",
             "to_formats": ["md", "json"],
             "image_export_mode": "embedded",
             "do_ocr": True,

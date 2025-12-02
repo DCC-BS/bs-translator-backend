@@ -131,7 +131,7 @@ The Docker Compose setup includes:
 docker build -t bs-translator-backend .
 
 # Run the container
-docker run -p 8000:8000 bs-translator-backend
+docker run --rm --env-file .env -p 8000:8000 bs-translator-backend
 ```
 
 ## Testing & Development Tools
@@ -177,7 +177,7 @@ src/bs_translator_backend/
 ├── models/                     # Data models and schemas
 │   ├── app_config.py          # Application configuration
 │   ├── conversion_result.py   # Document conversion models
-│   ├── langugage.py           # Language definitions
+│   ├── language.py           # Language definitions
 │   ├── translation_config.py  # Translation configuration
 │   └── translation_input.py   # Translation input models
 ├── routers/                    # API endpoint definitions

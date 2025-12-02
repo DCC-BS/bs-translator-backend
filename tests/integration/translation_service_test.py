@@ -5,7 +5,7 @@ from fastapi import UploadFile
 from starlette.datastructures import Headers
 
 from bs_translator_backend.models.app_config import AppConfig
-from bs_translator_backend.models.langugage import Language
+from bs_translator_backend.models.language import Language
 from bs_translator_backend.models.translation_config import TranslationConfig
 from bs_translator_backend.services.custom_llms.qwen3 import QwenVllm
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService
@@ -45,7 +45,7 @@ async def test_image_translate(app_config: AppConfig) -> None:
         # Collect translation entries for potential image overlay
         translation_entries = []
 
-        for entry in translation_service.translate_image(upload_file, translate_config):
+        async for entry in translation_service.translate_image(upload_file, translate_config):
             logger.info(f"{entry.original} ==> {entry.translated} BBox: {entry.bbox}")
             translation_entries.append(entry)
 
