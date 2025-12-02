@@ -131,7 +131,7 @@ The Docker Compose setup includes:
 docker build -t bs-translator-backend .
 
 # Run the container
-docker run -p 8000:8000 bs-translator-backend
+docker run --rm --env-file .env -p 8000:8000 bs-translator-backend
 ```
 
 ## Testing & Development Tools

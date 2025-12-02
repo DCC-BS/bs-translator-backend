@@ -3,5 +3,11 @@
 examples
 tests
 .env.example
-.env
 Makefile
+.git
+.gitignore
+tests
+.mypy_cache
+.venv
+.pytest_cache
+.ruff_cache
