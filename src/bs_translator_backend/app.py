@@ -124,6 +124,8 @@ def create_app() -> FastAPI:
         checks: dict[str, str] = {"dependencies": "unknown"}
         try:
             request.app.state.container.check_dependencies()
+            await request.app.state.container.llm.is_ready()
+            await request.app.state.container.transcription_service.is_ready()
         except Exception as exc:  # pragma: no cover - defensive Path
             response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
             return {"status": "unhealthy", "error": str(exc)}
