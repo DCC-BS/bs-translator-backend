@@ -121,16 +121,24 @@ def create_app() -> FastAPI:
         Returns:
             dict[str, object]: Readiness status and dependencies status
         """
-        checks: dict[str, str] = {"dependencies": "unknown"}
+        checks: dict[str, str] = {
+            "dependencies": "unknown",
+            "llm": "unknown",
+            "transcription": "unkown",
+        }
         try:
             request.app.state.container.check_dependencies()
-            await request.app.state.container.llm.is_ready()
-            await request.app.state.container.transcription_service.is_ready()
+            checks["dependencies"] = "healthy"
+            if not await request.app.state.container.llm.is_ready():
+                checks["llm"] = "unhealthy"
+            if not await request.app.state.container.transcription_service.is_ready():
+                checks["transcription"] = "unhealthy"
+            checks["transcription"] = "healthy"
         except Exception as exc:  # pragma: no cover - defensive Path
             response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-            return {"status": "unhealthy", "error": str(exc)}
+            checks["dependencies"] = "unhealthy"
+            return {"status": "unhealthy", "error": str(exc), "checks": checks}
         else:
-            checks["dependencies"] = "connected"
             return {"status": "ready", "checks": checks}
 
     @app.get("/health/startup", tags=["Health"])

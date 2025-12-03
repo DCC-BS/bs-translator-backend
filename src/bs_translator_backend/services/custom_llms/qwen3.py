@@ -150,6 +150,4 @@ class QwenVllm(CustomLLM):
 
     async def is_ready(self) -> bool:
         response = await self.http_client.get(f"{self.config.openai_api_base_url}/health")
-        if response.status_code != 200:
-            raise Exception(f"LLM is not ready: {response.status_code}")
-        return True
+        return response.status_code == 200

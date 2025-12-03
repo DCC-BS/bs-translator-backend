@@ -28,7 +28,5 @@ class TranscriptionService:
                 yield chunk[6:]
 
     async def is_ready(self) -> bool:
-        response = await self.client.get(f"{self.config.whisper_url}/healthz")
-        if response.status_code != 200:
-            raise Exception(f"Transcription service is not ready: {response.status_code}")
-        return True
+        response = await self.client.get(f"{self.config.whisper_url}/readyz")
+        return response.status_code == 200
