@@ -104,14 +104,26 @@ def create_app() -> FastAPI:
     logger.info("All routers registered")
 
     @app.get("/health/liveness", tags=["Health"])
-    async def liveness_probe() -> dict[str, float | str]:
-        return {"status": "up", "uptime_seconds": time.time() - app.state.start_time}
+    async def liveness_probe(request: Request) -> dict[str, float | str]:
+        """
+        Check if the application is alive. Used for Kubernetes liveness probe.
+
+        Returns:
+            dict[str, float | str]: Liveness status and uptime in seconds
+        """
+        return {"status": "up", "uptime_seconds": time.time() - request.app.state.start_time}
 
     @app.get("/health/readiness", tags=["Health"])
-    async def readiness_probe(response: Response) -> dict[str, object]:
+    async def readiness_probe(request: Request, response: Response) -> dict[str, object]:
+        """
+        Check if the application is ready to serve requests. Used for Kubernetes readiness probe.
+
+        Returns:
+            dict[str, object]: Readiness status and dependencies status
+        """
         checks: dict[str, str] = {"dependencies": "unknown"}
         try:
-            container.check_dependencies()
+            request.app.state.container.check_dependencies()
         except Exception as exc:  # pragma: no cover - defensive Path
             response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
             return {"status": "unhealthy", "error": str(exc)}
@@ -120,8 +132,14 @@ def create_app() -> FastAPI:
             return {"status": "ready", "checks": checks}
 
     @app.get("/health/startup", tags=["Health"])
-    async def startup_probe(response: Response) -> dict[str, str]:
-        if app.state.startup_complete:
+    async def startup_probe(request: Request, response: Response) -> dict[str, str]:
+        """
+        Check if the application has completed startup. Used for Kubernetes startup probe.
+
+        Returns:
+            dict[str, str]: Startup status and timestamp
+        """
+        if request.app.state.startup_complete:
             return {
                 "status": "started",
                 "timestamp": datetime.now(tz=UTC).isoformat(),
