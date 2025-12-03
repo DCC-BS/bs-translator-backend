@@ -1,4 +1,8 @@
-from fastapi import FastAPI, Request
+import time
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
+
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 
@@ -9,6 +13,8 @@ from bs_translator_backend.models.error_response import ApiErrorException
 from bs_translator_backend.routers import convert_route, transcription_route, translation_route
 from bs_translator_backend.utils.load_env import load_env
 from bs_translator_backend.utils.logger import get_logger, init_logger
+
+START_TIME = time.time()
 
 
 def create_app() -> FastAPI:
@@ -29,13 +35,24 @@ def create_app() -> FastAPI:
     init_logger()
     load_env()
 
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        app.state.startup_complete = True
+        try:
+            yield
+        finally:  # pragma: no cover - defensive cleanup
+            app.state.startup_complete = False
+
     app = FastAPI(
         title="BS Translator API",
         description="API for text translation and document conversion services with AI-powered language processing",
         version="0.1.0",
         docs_url="/docs",
         redoc_url="/redoc",
+        lifespan=lifespan,
     )
+    app.state.startup_complete = False
+    app.state.start_time = START_TIME
 
     def api_error_handler(request: Request, exc: Exception) -> Response:
         if isinstance(exc, ApiErrorException):
@@ -62,6 +79,7 @@ def create_app() -> FastAPI:
     container.wire(modules=[translation_route, convert_route, transcription_route])
     container.check_dependencies()
     logger.info("Dependency injection configured")
+    app.state.container = container
 
     config = container.app_config()
     logger.info(f"AppConfig loaded: {config}")
@@ -84,6 +102,33 @@ def create_app() -> FastAPI:
     app.include_router(convert_route.create_router())
     app.include_router(transcription_route.create_router())
     logger.info("All routers registered")
+
+    @app.get("/health/liveness", tags=["Health"])
+    async def liveness_probe() -> dict[str, float | str]:
+        return {"status": "up", "uptime_seconds": time.time() - app.state.start_time}
+
+    @app.get("/health/readiness", tags=["Health"])
+    async def readiness_probe(response: Response) -> dict[str, object]:
+        checks: dict[str, str] = {"dependencies": "unknown"}
+        try:
+            container.check_dependencies()
+        except Exception as exc:  # pragma: no cover - defensive Path
+            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+            return {"status": "unhealthy", "error": str(exc)}
+        else:
+            checks["dependencies"] = "connected"
+            return {"status": "ready", "checks": checks}
+
+    @app.get("/health/startup", tags=["Health"])
+    async def startup_probe(response: Response) -> dict[str, str]:
+        if app.state.startup_complete:
+            return {
+                "status": "started",
+                "timestamp": datetime.now(tz=UTC).isoformat(),
+            }
+
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {"status": "starting"}
 
     logger.info("API setup complete")
     return app

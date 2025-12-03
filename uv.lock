@@ -146,6 +146,7 @@ wheels = [
 
 [[package]]
 name = "bs-translator-backend"
+version = "0.0.1"
 source = { editable = "." }
 dependencies = [
     { name = "dependency-injector" },
@@ -158,7 +159,6 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "returns" },
     { name = "structlog" },
-    { name = "version-pioneer" },
 ]
 
 [package.dev-dependencies]
@@ -186,7 +186,6 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "returns", specifier = ">=0.26.0" },
     { name = "structlog", specifier = ">=25.1.0" },
-    { name = "version-pioneer", specifier = ">=0.0.13" },
 ]
 
 [package.metadata.requires-dev]
@@ -1953,15 +1952,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/15/c0/0be24758891ef825f2065cd5db8741aaddabe3e248ee6acc5e8a80f04005/uvloop-0.22.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:0530a5fbad9c9e4ee3f2b33b148c6a64d47bbad8000ea63704fa8260f4cf728e", size = 4366890, upload-time = "2025-10-16T22:16:40.547Z" },
     { url = "https://files.pythonhosted.org/packages/d2/53/8369e5219a5855869bcee5f4d317f6da0e2c669aecf0ef7d371e3d084449/uvloop-0.22.1-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:bc5ef13bbc10b5335792360623cc378d52d7e62c2de64660616478c32cd0598e", size = 4119472, upload-time = "2025-10-16T22:16:41.694Z" },
     { url = "https://files.pythonhosted.org/packages/f8/ba/d69adbe699b768f6b29a5eec7b47dd610bd17a69de51b251126a801369ea/uvloop-0.22.1-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:1f38ec5e3f18c8a10ded09742f7fb8de0108796eb673f30ce7762ce1b8550cad", size = 4239051, upload-time = "2025-10-16T22:16:43.224Z" },
-]
-
-[[package]]
-name = "version-pioneer"
-version = "0.0.13"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/61/56/aafde3e86876a3753b70988c3a6d07933ca83c5a9c75135f860ae04fd95e/version_pioneer-0.0.13.tar.gz", hash = "sha256:6d4a1c08f3ad88714d99ffc6b54faccf22cca26c1807388aedc3c063c3648b5f", size = 61611, upload-time = "2025-02-11T01:52:32.72Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/d4/043a7c105fe01a287b03749dc7979db10c0ed77f6c5d0a6721644f312ba0/version_pioneer-0.0.13-py3-none-any.whl", hash = "sha256:c18c35836c17fe236eaa35eea8d4b26d67595e26bfbfbf6136e0ca0522d0195a", size = 48509, upload-time = "2025-02-11T01:52:31.258Z" },
 ]
 
 [[package]]
