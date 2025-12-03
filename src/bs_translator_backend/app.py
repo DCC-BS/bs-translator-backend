@@ -14,7 +14,7 @@ from bs_translator_backend.routers import convert_route, transcription_route, tr
 from bs_translator_backend.utils.load_env import load_env
 from bs_translator_backend.utils.logger import get_logger, init_logger
 
-START_TIME = time.time()
+CACHE_DURATION = 30  # seconds
 
 
 def create_app() -> FastAPI:
@@ -38,6 +38,7 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.startup_complete = True
+        app.state.startup_timestamp = datetime.now(tz=UTC).isoformat()
         try:
             yield
         finally:  # pragma: no cover - defensive cleanup
@@ -52,7 +53,9 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.state.startup_complete = False
-    app.state.start_time = START_TIME
+
+    app.state.last_check_time = 0
+    app.state.last_check_result = None
 
     def api_error_handler(request: Request, exc: Exception) -> Response:
         if isinstance(exc, ApiErrorException):
@@ -111,35 +114,39 @@ def create_app() -> FastAPI:
         Returns:
             dict[str, float | str]: Liveness status and uptime in seconds
         """
-        return {"status": "up", "uptime_seconds": time.time() - request.app.state.start_time}
+        return {
+            "status": "up",
+            "uptime_seconds": time.time()
+            - datetime.fromisoformat(request.app.state.startup_timestamp).timestamp(),
+        }
 
     @app.get("/health/readiness", tags=["Health"])
     async def readiness_probe(request: Request, response: Response) -> dict[str, object]:
-        """
-        Check if the application is ready to serve requests. Used for Kubernetes readiness probe.
+        current_time = time.time()
+        if (
+            current_time - request.app.state.last_check_time < CACHE_DURATION
+            and request.app.state.last_check_result is not None
+        ):
+            return request.app.state.last_check_result
 
-        Returns:
-            dict[str, object]: Readiness status and dependencies status
-        """
-        checks: dict[str, str] = {
-            "dependencies": "unknown",
-            "llm": "unknown",
-            "transcription": "unkown",
-        }
+        checks: dict[str, str] = {"dependencies": "unknown"}
         try:
             request.app.state.container.check_dependencies()
-            checks["dependencies"] = "healthy"
-            if not await request.app.state.container.llm.is_ready():
-                checks["llm"] = "unhealthy"
-            if not await request.app.state.container.transcription_service.is_ready():
-                checks["transcription"] = "unhealthy"
-            checks["transcription"] = "healthy"
         except Exception as exc:  # pragma: no cover - defensive Path
             response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-            checks["dependencies"] = "unhealthy"
-            return {"status": "unhealthy", "error": str(exc), "checks": checks}
+            result = {
+                "status": "unhealthy",
+                "error": "Dependency check failed",
+            }  # Sanitized message
+            request.app.state.last_check_time = current_time
+            request.app.state.last_check_result = result
+            return result
         else:
-            return {"status": "ready", "checks": checks}
+            checks["dependencies"] = "connected"
+            result = {"status": "ready", "checks": checks}
+            request.app.state.last_check_time = current_time
+            request.app.state.last_check_result = result
+            return result
 
     @app.get("/health/startup", tags=["Health"])
     async def startup_probe(request: Request, response: Response) -> dict[str, str]:
@@ -152,7 +159,7 @@ def create_app() -> FastAPI:
         if request.app.state.startup_complete:
             return {
                 "status": "started",
-                "timestamp": datetime.now(tz=UTC).isoformat(),
+                "timestamp": request.app.state.startup_timestamp,
             }
 
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE

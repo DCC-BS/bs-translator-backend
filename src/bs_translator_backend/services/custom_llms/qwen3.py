@@ -43,7 +43,7 @@ class QwenVllm(CustomLLM):
         )
         http_client = httpx.AsyncClient(timeout=5.0)
         # Call the superclass __init__ first to ensure all base attributes are initialized
-        super().__init__(config=config, client=client)
+        super().__init__(config=config, client=client, http_client=http_client)
 
     @property
     @override
