@@ -149,5 +149,6 @@ class QwenVllm(CustomLLM):
                 self.last_log = f"Tool call received in chunk: {chunk.model_dump_json()}"
 
     async def is_ready(self) -> bool:
-        response = await self.http_client.get(f"{self.config.openai_api_base_url}/health")
+        base_url = self.config.openai_api_base_url.rstrip("/v1")
+        response = await self.http_client.get(f"{base_url}/health")
         return response.status_code == 200
