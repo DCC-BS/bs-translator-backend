@@ -1,0 +1,32 @@
+---
+alwaysApply: true
+---
+
+- Always use python 3.13
+- Use uv for package management
+- make check to run all checks
+- make test to run tests
+- make dev to run the development server
+- Follow PEP 8 style guide for Python code.
+- Use docstrings for all functions and classes.
+- Use type hints
+- Write simple and clear code, avoid complex code.
+- Keep methods and functions small and focused.
+- Do not add unnecessary comments.
+- Prefer reusable code. Check if functionallity is already implemented in a framework or the project before implementing it yourself.
+- Could is easy to unit test.
+- Add unit tests for new functionality. Do not add tests with extensive mocking.
+- No side effects.
+- Use descriptive variable names with auxiliary verbs (e.g., is_active, has_permission).
+- Use the Receive an Object, Return an Object (RORO) pattern.
+
+Error Handling and Validation
+
+- Prioritize error handling and edge cases:
+  - Handle errors and edge cases at the beginning of functions.
+  - Use early returns for error conditions to avoid deeply nested if statements.
+  - Place the happy path last in the function for improved readability.
+  - Avoid unnecessary else statements; use the if-return pattern instead.
+  - Use guard clauses to handle preconditions and invalid states early.
+  - Implement proper error logging and user-friendly error messages.
+  - Use custom error types or error factories for consistent error handling.

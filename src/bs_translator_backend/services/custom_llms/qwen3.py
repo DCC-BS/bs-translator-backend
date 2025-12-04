@@ -1,5 +1,6 @@
 from typing import Any, final, override
 
+import httpx
 from llama_index.core.llms import CompletionResponse, CompletionResponseGen, CustomLLM, LLMMetadata
 from llama_index.core.llms.callbacks import llm_completion_callback
 from openai import OpenAI
@@ -23,6 +24,7 @@ class QwenVllm(CustomLLM):
     """
 
     client: OpenAI
+    http_client: httpx.AsyncClient
     config: AppConfig
     last_log: str = Field(default="", description="Last log message")
 
@@ -39,9 +41,9 @@ class QwenVllm(CustomLLM):
             api_key=config.openai_api_key,
             base_url=config.openai_api_base_url,
         )
-
+        http_client = httpx.AsyncClient(timeout=5.0)
         # Call the superclass __init__ first to ensure all base attributes are initialized
-        super().__init__(config=config, client=client)
+        super().__init__(config=config, client=client, http_client=http_client)
 
     @property
     @override
@@ -145,3 +147,8 @@ class QwenVllm(CustomLLM):
                 # For tool calls in streaming, we just log them but actual tool execution
                 # should be handled by the caller after the stream is complete
                 self.last_log = f"Tool call received in chunk: {chunk.model_dump_json()}"
+
+    async def is_ready(self) -> bool:
+        base_url = self.config.openai_api_base_url.rstrip("/v1")
+        response = await self.http_client.get(f"{base_url}/health")
+        return response.status_code == 200
