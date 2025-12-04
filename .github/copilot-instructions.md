@@ -1,7 +1,7 @@
 ## Python Coding Standards for Copilot
 
 1. Type Annotations:
-   - Always use type annotations compatible with Python 3.10 and above.
+   - Always use type annotations compatible with Python 3.13
    - Utilize new features like Union | for union types.
 
 2. Ruff Configuration:
