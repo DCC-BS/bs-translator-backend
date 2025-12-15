@@ -185,8 +185,13 @@ src/bs_translator_backend/
 │   └── translation_route.py   # Translation endpoints
 ├── services/                   # Business logic services
 │   ├── document_conversion_service.py  # Document processing
-│   ├── llm_facade.py          # LLM integration facade
 │   ├── text_chunk_service.py  # Text chunking utilities
+│   ├── custom_llms/           # Custom LLM services
+│   │   ├── dspy_clients.py    # DSPy clients
+│   │   ├── dataset_loader.py  # Dataset loading
+│   │   ├── qwen3.py           # Qwen3 model
+│   │   ├── translation_program.py # Translation program
+│   │   └── optimization_store.py # Optimization store
 │   └── translation_service.py # Translation logic
 ├── translator/                 # Translation implementations
 │   ├── base_translator.py     # Base translator interface

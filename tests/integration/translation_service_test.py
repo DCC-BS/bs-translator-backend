@@ -7,7 +7,7 @@ from starlette.datastructures import Headers
 from bs_translator_backend.models.app_config import AppConfig
 from bs_translator_backend.models.language import Language
 from bs_translator_backend.models.translation_config import TranslationConfig
-from bs_translator_backend.services.custom_llms.qwen3 import QwenVllm
+from bs_translator_backend.services.dspy_config.qwen3 import DspyVllm
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService
 from bs_translator_backend.services.llm_facade import LLMFacade
 from bs_translator_backend.services.text_chunk_service import TextChunkService
@@ -31,7 +31,7 @@ def app_config() -> AppConfig:
 async def test_image_translate(app_config: AppConfig) -> None:
     conversion_service = DocumentConversionService(app_config)
 
-    llm = QwenVllm(app_config)
+    llm = DspyVllm.from_config(app_config).inference_lm
     llm_facade = LLMFacade(llm)
     text_chunk_service = TextChunkService()
     translation_service = TranslationService(llm_facade, text_chunk_service, conversion_service)

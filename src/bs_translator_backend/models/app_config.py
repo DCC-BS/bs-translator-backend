@@ -25,6 +25,19 @@ class AppConfig(BaseModel):
     openai_api_base_url: str = Field(description="The base URL for the OpenAI API")
     openai_api_key: str = Field(description="The API key for authenticating with OpenAI")
     llm_model: str = Field(description="The language model to use for text generation")
+    optimizer_api_key: str = Field(
+        default="", description="API key for optimizer/proposal LM (defaults to OPENAI_API_KEY)"
+    )
+    optimizer_model: str = Field(
+        default="", description="Model to use for optimization (default: gpt-4o-mini)"
+    )
+    optimizer_api_base_url: str = Field(
+        default="", description="Optional base URL for optimizer LM (default OpenAI endpoint)"
+    )
+    translation_module_path: str = Field(
+        default="src/bs_translator_backend/services/dspy_config/translation_module.pkl",
+        description="The path to the translation module",
+    )
     client_url: str = Field(description="The URL for the client application")
     docling_url: str = Field(description="The URL for the Docling service")
     hmac_secret: str = Field(description="The secret key for HMAC authentication")
@@ -36,14 +49,21 @@ class AppConfig(BaseModel):
         openai_api_base_url: str = get_env_or_throw("OPENAI_API_BASE_URL")
         openai_api_key: str = get_env_or_throw("OPENAI_API_KEY")
         llm_model: str = get_env_or_throw("LLM_MODEL")
+        optimizer_api_key: str = os.getenv("OPTIMIZER_API_KEY", "")
+        optimizer_model: str = os.getenv("OPTIMIZER_MODEL", "")
+        optimizer_api_base_url: str = os.getenv("OPTIMIZER_API_BASE_URL", "")
         client_url: str = get_env_or_throw("CLIENT_URL")
         docling_url: str = get_env_or_throw("DOCLING_URL")
         hmac_secret: str = get_env_or_throw("HMAC_SECRET")
         whisper_url: str = get_env_or_throw("WHISPER_URL")
+
         return cls(
             openai_api_base_url=openai_api_base_url,
             openai_api_key=openai_api_key,
-            llm_model=llm_model,
+            llm_model="openai/" + llm_model,  # Use openai prefix for DSPy
+            optimizer_api_key=optimizer_api_key,
+            optimizer_model="openai/" + optimizer_model,  # Use openai prefix for DSPy
+            optimizer_api_base_url=optimizer_api_base_url,
             client_url=client_url,
             docling_url=docling_url,
             hmac_secret=hmac_secret,

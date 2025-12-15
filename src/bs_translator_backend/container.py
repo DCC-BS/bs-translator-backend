@@ -1,10 +1,9 @@
+import dspy
 from dependency_injector import containers, providers
-from llama_index.core.llms import LLM
 
 from bs_translator_backend.models.app_config import AppConfig
-from bs_translator_backend.services.custom_llms.qwen3 import QwenVllm
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService
-from bs_translator_backend.services.llm_facade import LLMFacade
+from bs_translator_backend.services.dspy_config.translation_program import TranslationModule
 from bs_translator_backend.services.text_chunk_service import TextChunkService
 from bs_translator_backend.services.transcription_service import TranscriptionService
 from bs_translator_backend.services.translation_service import TranslationService
@@ -14,14 +13,9 @@ from bs_translator_backend.services.usage_tracking_service import UsageTrackingS
 class Container(containers.DeclarativeContainer):
     app_config = providers.Singleton(AppConfig)
 
-    llm: providers.Singleton[LLM] = providers.Singleton(
-        QwenVllm,
-        config=app_config,
-    )
-
-    llm_facade: providers.Singleton[LLMFacade] = providers.Singleton(
-        LLMFacade,
-        llm=llm,
+    translation_module: providers.Singleton[TranslationModule] = providers.Singleton(
+        TranslationModule,
+        app_config=app_config,
     )
 
     text_chunk_service: providers.Singleton[TextChunkService] = providers.Singleton(
@@ -35,7 +29,7 @@ class Container(containers.DeclarativeContainer):
 
     translation_service: providers.Singleton[TranslationService] = providers.Singleton(
         TranslationService,
-        llm_facade=llm_facade,
+        translation_module=translation_module,
         text_chunk_service=text_chunk_service,
         conversion_service=document_conversion_service,
     )

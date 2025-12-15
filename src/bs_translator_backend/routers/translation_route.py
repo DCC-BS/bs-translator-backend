@@ -70,7 +70,7 @@ def create_router(  # noqa: C901
         )
 
         async def generate_translation() -> AsyncGenerator[str, None]:
-            for chunk in translation_service.translate_text(
+            async for chunk in translation_service.translate_text(
                 translation_input.text, translation_input.config
             ):
                 if await request.is_disconnected():

@@ -3,6 +3,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
+import dspy
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
@@ -205,6 +206,14 @@ def create_app() -> FastAPI:
     container = _configure_container(app=app, logger=logger)
     config = container.app_config()
     logger.info(f"AppConfig loaded: {config}")
+
+    dspy.configure(
+        lm=dspy.LM(
+            model=config.llm_model,
+            api_key=config.openai_api_key,
+            api_base=config.openai_api_base_url,
+        )
+    )
 
     _configure_cors(app=app, client_url=config.client_url, logger=logger)
     _register_routes(app=app, logger=logger)
