@@ -1,5 +1,6 @@
 docs/source
-
+src/bs_translator_backend/data/*.csv
+eval_*.csv
 # From https://raw.githubusercontent.com/github/gitignore/main/Python.gitignore
 
 # Byte-compiled / optimized / DLL files
