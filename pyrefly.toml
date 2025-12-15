@@ -1,5 +1,5 @@
 project-includes = [
-    "bs_translator_backend",
+    "src/bs_translator_backend",
     "tests",
 ]
 project-excludes = [
@@ -9,3 +9,4 @@ project-excludes = [
     "**/node_modules",
 ]
 infer-with-first-use = false
+python-interpreter-path = ".venv/bin/python3"

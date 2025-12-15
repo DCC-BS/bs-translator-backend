@@ -64,7 +64,7 @@ def create_router(
             if await request.is_disconnected():
                 task.cancel()
                 logger.info("Conversion task cancelled due to client disconnect")
-                return ConversionOutput(markdown="", images=[])
+                return ConversionOutput(markdown="", images={})
 
         result = task.result()
         return ConversionOutput(markdown=result.markdown, images=result.images)
