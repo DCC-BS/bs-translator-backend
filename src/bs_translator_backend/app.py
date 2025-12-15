@@ -1,10 +1,11 @@
-import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 import dspy
-from fastapi import FastAPI, Request, status
+from backend_common.fastapi_health_probes import health_probe_router
+from backend_common.fastapi_health_probes.router import ServiceDependency
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from structlog.stdlib import BoundLogger
@@ -20,19 +21,6 @@ from bs_translator_backend.utils.logger import get_logger, init_logger
 CACHE_DURATION = 30  # seconds
 
 
-@asynccontextmanager
-async def _app_lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """
-    Track application lifecycle state for probes.
-    """
-    app.state.startup_complete = True
-    app.state.startup_timestamp = datetime.now(tz=UTC).isoformat()
-    try:
-        yield
-    finally:  # pragma: no cover - defensive cleanup
-        app.state.startup_complete = False
-
-
 def _build_fastapi_app() -> FastAPI:
     """
     Instantiate the FastAPI application with metadata and lifespan.
@@ -43,10 +31,35 @@ def _build_fastapi_app() -> FastAPI:
         version="0.1.0",
         docs_url="/docs",
         redoc_url="/redoc",
-        lifespan=_app_lifespan,
     )
-    app.state.startup_complete = False
+
     return app
+
+
+def _register_health_routes(app: FastAPI, config: AppConfig) -> None:
+    """
+    Register health routes for the application.
+    """
+    whisper_base_url = config.whisper_url.rstrip("/v1")
+    llm_base_url = config.openai_api_base_url.rstrip("/v1")
+    service_dependencies: list[ServiceDependency] = [
+        ServiceDependency(
+            name="whisper",
+            health_check_url=f"{whisper_base_url}/readyz",
+            api_key=config.openai_api_key,
+        ),
+        ServiceDependency(
+            name="llm",
+            health_check_url=f"{llm_base_url}/health",
+            api_key=config.openai_api_key,
+        ),
+        ServiceDependency(
+            name="docling",
+            health_check_url=f"{config.docling_url}/health",
+            api_key=config.openai_api_key,
+        ),
+    ]
+    app.include_router(health_probe_router(service_dependencies=service_dependencies))
 
 
 def _register_exception_handlers(app: FastAPI) -> None:
@@ -110,72 +123,6 @@ def _register_routes(app: FastAPI, logger: BoundLogger) -> None:
     logger.info("All routers registered")
 
 
-def _register_health_routes(app: FastAPI) -> None:
-    """
-    Register health probe endpoints.
-    """
-
-    @app.get("/health/liveness", tags=["Health"])
-    async def liveness_probe(request: Request) -> dict[str, float | str]:
-        """
-        Check if the application is alive. Used for Kubernetes liveness probe.
-
-        Returns:
-            dict[str, float | str]: Liveness status and uptime in seconds
-        """
-        return {
-            "status": "up",
-            "uptime_seconds": time.time()
-            - datetime.fromisoformat(request.app.state.startup_timestamp).timestamp(),
-        }
-
-    @app.get("/health/readiness", tags=["Health"])
-    async def readiness_probe(request: Request, response: Response) -> dict[str, object]:
-        """
-        Confirm that dependencies are ready for traffic.
-        """
-        current_time = time.time()
-        cached_result = request.app.state.last_check_result
-        if (
-            current_time - request.app.state.last_check_time < CACHE_DURATION
-            and cached_result is not None
-        ):
-            return cached_result
-
-        checks: dict[str, str] = {"dependencies": "unknown"}
-        try:
-            request.app.state.container.check_dependencies()
-        except Exception:  # pragma: no cover - defensive path
-            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-            result: dict[str, object] = {"status": "unhealthy", "error": "Dependency check failed"}
-            request.app.state.last_check_time = current_time
-            request.app.state.last_check_result = result
-            return result
-
-        checks["dependencies"] = "connected"
-        result: dict[str, object] = {"status": "ready", "checks": checks}
-        request.app.state.last_check_time = current_time
-        request.app.state.last_check_result = result
-        return result
-
-    @app.get("/health/startup", tags=["Health"])
-    async def startup_probe(request: Request, response: Response) -> dict[str, str]:
-        """
-        Check if the application has completed startup. Used for Kubernetes startup probe.
-
-        Returns:
-            dict[str, str]: Startup status and timestamp
-        """
-        if request.app.state.startup_complete:
-            return {
-                "status": "started",
-                "timestamp": request.app.state.startup_timestamp,
-            }
-
-        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        return {"status": "starting"}
-
-
 def create_app() -> FastAPI:
     """
     Create and configure the FastAPI application.
@@ -198,14 +145,14 @@ def create_app() -> FastAPI:
     logger.info("Starting Text Mate API application")
 
     app = _build_fastapi_app()
-    app.state.last_check_time = 0
-    app.state.last_check_result = None
 
     _register_exception_handlers(app)
 
     container = _configure_container(app=app, logger=logger)
     config = container.app_config()
     logger.info(f"AppConfig loaded: {config}")
+
+    _register_health_routes(app=app, config=config)
 
     dspy.configure(
         lm=dspy.LM(
@@ -217,7 +164,6 @@ def create_app() -> FastAPI:
 
     _configure_cors(app=app, client_url=config.client_url, logger=logger)
     _register_routes(app=app, logger=logger)
-    _register_health_routes(app=app)
 
     logger.info("API setup complete")
     return app

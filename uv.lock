@@ -143,6 +143,21 @@ wheels = [
 ]
 
 [[package]]
+name = "backend-common"
+version = "0.0.1"
+source = { git = "https://github.com/DCC-BS/backend-common#eab5fd28893247779ffaf9e4e13033f8877b9ef2" }
+dependencies = [
+    { name = "python-dotenv" },
+    { name = "structlog" },
+]
+
+[package.optional-dependencies]
+fastapi = [
+    { name = "aiohttp" },
+    { name = "fastapi" },
+]
+
+[[package]]
 name = "backoff"
 version = "2.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -156,6 +171,7 @@ name = "bs-translator-backend"
 version = "0.0.1"
 source = { editable = "." }
 dependencies = [
+    { name = "backend-common", extra = ["fastapi"] },
     { name = "datasets" },
     { name = "dependency-injector" },
     { name = "dspy" },
@@ -183,6 +199,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "backend-common", extras = ["fastapi"], git = "https://github.com/DCC-BS/backend-common" },
     { name = "datasets", specifier = ">=3.1.0" },
     { name = "dependency-injector", specifier = ">=4.48.1" },
     { name = "dspy", specifier = ">=3.0.4" },

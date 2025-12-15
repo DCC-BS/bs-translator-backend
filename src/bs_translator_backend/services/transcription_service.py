@@ -26,8 +26,3 @@ class TranscriptionService:
         ) as response:
             async for chunk in response.aiter_text():
                 yield chunk[6:]
-
-    async def is_ready(self) -> bool:
-        base_url = self.config.whisper_url.rstrip("/v1")
-        response = await self.client.get(f"{base_url}/readyz")
-        return response.status_code == 200
