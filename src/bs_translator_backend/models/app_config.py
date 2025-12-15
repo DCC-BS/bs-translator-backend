@@ -70,14 +70,19 @@ class AppConfig(BaseModel):
             whisper_url=whisper_url,
         )
 
-    # def __str__(self) -> str:
-    #     return f"""
-    #     AppConfig(
-    #         client_url={self.client_url},
-    #         openai_api_base_url={self.openai_api_base_url},
-    #         openai_api_key={log_secret(self.openai_api_key)},
-    #         llm_model={self.llm_model},
-    #         hmac_secret={log_secret(self.hmac_secret)},
-    #         docling_url={self.docling_url}
-    #     )
-    #     """
+    def __str__(self) -> str:
+        return f"""
+        AppConfig(
+            client_url={self.client_url},
+            openai_api_base_url={self.openai_api_base_url},
+            openai_api_key={log_secret(self.openai_api_key)},
+            llm_model={self.llm_model},
+            hmac_secret={log_secret(self.hmac_secret)},
+            docling_url={self.docling_url}
+            whisper_url={self.whisper_url}
+            translation_module_path={self.translation_module_path}
+            optimizer_api_key={log_secret(self.optimizer_api_key)}
+            optimizer_model={self.optimizer_model}
+            optimizer_api_base_url={self.optimizer_api_base_url}
+        )
+        """
