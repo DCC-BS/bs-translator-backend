@@ -1,0 +1,12 @@
+project-includes = [
+    "src/bs_translator_backend",
+    "tests",
+]
+project-excludes = [
+    ".venv",
+    "**/__pycache__",
+    "**/.pytest_cache",
+    "**/node_modules",
+]
+infer-with-first-use = false
+python-interpreter-path = ".venv/bin/python3"

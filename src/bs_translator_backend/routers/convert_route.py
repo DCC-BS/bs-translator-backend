@@ -9,7 +9,9 @@ from fastapi import APIRouter, Form, Header, Request, UploadFile
 from bs_translator_backend.container import Container
 from bs_translator_backend.models.conversion_result import ConversionOutput
 from bs_translator_backend.models.language import LanguageOrAuto
-from bs_translator_backend.services.document_conversion_service import DocumentConversionService
+from bs_translator_backend.services.document_conversion_service import (
+    DocumentConversionService,
+)
 from bs_translator_backend.services.usage_tracking_service import UsageTrackingService
 
 logger = get_logger(__name__)
@@ -17,10 +19,12 @@ logger = get_logger(__name__)
 
 @inject
 def create_router(
-    document_conversion_service_factory: Callable[[], DocumentConversionService] = Provide[
-        Container.document_conversion_service.provider
+    document_conversion_service_factory: Callable[
+        [], DocumentConversionService
+    ] = Provide[Container.document_conversion_service.provider],
+    usage_tracking_service: UsageTrackingService = Provide[
+        Container.usage_tracking_service
     ],
-    usage_tracking_service: UsageTrackingService = Provide[Container.usage_tracking_service],
 ) -> APIRouter:
     """
     Create and configure the document conversion API router.
@@ -59,7 +63,9 @@ def create_router(
         )
 
         async with document_conversion_service_factory() as conversion_service:
-            task = asyncio.create_task(conversion_service.convert(file, source_language))
+            task = asyncio.create_task(
+                conversion_service.convert(file, source_language)
+            )
 
             while task.done() is False:
                 await asyncio.sleep(0.1)

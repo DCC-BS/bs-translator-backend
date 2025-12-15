@@ -47,6 +47,7 @@ dev = [
     "ruff>=0.9.2",
     "rich>=13.9.4",
     "pytest-asyncio>=1.1.0",
+    "pyrefly>=0.45.2",
 ]
 
 
@@ -58,19 +59,6 @@ prepare-dataset = "bs_translator_backend.scripts.prepare_dataset:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[tool.pyright]
-exclude = [
-    "**/__pycache__",
-    "**/.venv",
-    "**/.*"
-]
-defineConstant = { DEBUG = true }
-pythonVersion = "3.13"
-stubPath = "src/bs_translator_backend/stubs"
-reportExplicitAny = false
-venvPath = "."
-venv = ".venv"
 
 
 [tool.pytest.ini_options]
