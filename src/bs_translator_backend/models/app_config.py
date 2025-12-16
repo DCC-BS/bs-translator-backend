@@ -34,6 +34,10 @@ class AppConfig(BaseModel):
     optimizer_api_base_url: str = Field(
         default="", description="Optional base URL for optimizer LM (default OpenAI endpoint)"
     )
+    reasoning: bool = Field(
+        default=False,
+        description="Enable LLM reasoning; when false, disable with /no_think hint",
+    )
     translation_module_path: str = Field(
         default="src/bs_translator_backend/services/dspy_config/translation_module.pkl",
         description="The path to the translation module",
@@ -52,6 +56,8 @@ class AppConfig(BaseModel):
         optimizer_api_key: str = os.getenv("OPTIMIZER_API_KEY", "")
         optimizer_model: str = os.getenv("OPTIMIZER_MODEL", "")
         optimizer_api_base_url: str = os.getenv("OPTIMIZER_API_BASE_URL", "")
+        reasoning_raw = os.getenv("LLM_REASONING", "false").lower()
+        reasoning = reasoning_raw in {"1", "true", "yes", "on"}
         client_url: str = get_env_or_throw("CLIENT_URL")
         docling_url: str = get_env_or_throw("DOCLING_URL")
         hmac_secret: str = get_env_or_throw("HMAC_SECRET")
@@ -64,6 +70,7 @@ class AppConfig(BaseModel):
             optimizer_api_key=optimizer_api_key,
             optimizer_model="openai/" + optimizer_model,  # Use openai prefix for DSPy
             optimizer_api_base_url=optimizer_api_base_url,
+            reasoning=reasoning,
             client_url=client_url,
             docling_url=docling_url,
             hmac_secret=hmac_secret,
@@ -84,5 +91,6 @@ class AppConfig(BaseModel):
             optimizer_api_key={log_secret(self.optimizer_api_key)}
             optimizer_model={self.optimizer_model}
             optimizer_api_base_url={self.optimizer_api_base_url}
+            reasoning={self.reasoning}
         )
         """

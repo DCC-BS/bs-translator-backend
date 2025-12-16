@@ -158,9 +158,9 @@ uv run python -m pytest --doctest-modules
 ### DSPy Translation Optimization
 
 - Prepare sample and custom datasets (writes CSVs under `src/bs_translator_backend/data/`):
-  - `uv run prepare-dataset
+  - `uv run prepare-dataset`
 - Optimize the translation module with DSPy (requires `OPTIMIZER_*` env vars):
-  - `uv run optimize-translation
+  - `uv run optimize-translation`
   - Outputs an updated `translation_module.pkl` used by the API for streaming translations.
 
 ## API Endpoints

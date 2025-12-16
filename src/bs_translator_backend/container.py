@@ -1,4 +1,3 @@
-import dspy
 from dependency_injector import containers, providers
 
 from bs_translator_backend.models.app_config import AppConfig

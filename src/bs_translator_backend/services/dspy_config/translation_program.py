@@ -4,9 +4,13 @@ from typing import Any, cast
 
 import dspy
 import jiwer
-from dspy.primitives.module import Module
+from dspy.signatures import Signature
+from dspy.streaming.messages import StreamResponse
+from dspy.streaming.streaming_listener import StreamListener
+from litellm.types.utils import ModelResponseStream
 
 from bs_translator_backend.models.app_config import AppConfig
+from bs_translator_backend.utils.logger import get_logger
 
 
 class TranslationSignature(dspy.Signature):
@@ -33,29 +37,13 @@ class TranslationModule(dspy.Module):
     ):
         super().__init__()
         self.predict = dspy.Predict(TranslationSignature)
-        self.stream_predict: Any = dspy.streamify(self.predict)
+        stream_listener = SwissGermanStreamListener(
+            signature_field_name="translated_text", allow_reuse=True
+        )
+        self.stream_predict: Any = dspy.streamify(self.predict, stream_listeners=[stream_listener])
+        self.logger = get_logger(__name__)
         if os.path.exists(app_config.translation_module_path):
             self.load(app_config.translation_module_path)
-
-    def __call__(
-        self,
-        source_text: str,
-        source_language: str,
-        target_language: str,
-        domain: str = "",
-        tone: str = "",
-        glossary: str = "",
-        context: str = "",
-    ) -> dspy.Prediction:
-        return self.predict(
-            source_text=source_text,
-            source_language=source_language,
-            target_language=target_language,
-            domain=domain,
-            tone=tone,
-            glossary=glossary,
-            context=context,
-        )
 
     def forward(
         self,
@@ -66,18 +54,21 @@ class TranslationModule(dspy.Module):
         tone: str = "",
         glossary: str = "",
         context: str = "",
+        reasoning: bool = False,
     ) -> dspy.Prediction:
-        return self.predict(
-            source_text=source_text,
-            source_language=source_language,
-            target_language=target_language,
-            domain=domain,
-            tone=tone,
-            glossary=glossary,
-            context=context,
-        )
+        adapter = dspy.ChatAdapter() if reasoning else DisableReasoningAdapter()
+        with dspy.context(adapter=adapter):
+            return self.predict(
+                source_text=source_text,
+                source_language=source_language,
+                target_language=target_language,
+                domain=domain,
+                tone=tone,
+                glossary=glossary,
+                context=context,
+            )
 
-    async def stream(
+    def stream(
         self,
         source_text: str,
         source_language: str,
@@ -86,19 +77,115 @@ class TranslationModule(dspy.Module):
         tone: str = "",
         glossary: str = "",
         context: str = "",
+        reasoning: bool = False,
     ) -> AsyncGenerator[str, None]:
-        output = self.stream_predict(
-            source_text=source_text,
-            source_language=source_language,
-            target_language=target_language,
-            domain=domain,
-            tone=tone,
-            glossary=glossary,
-            context=context,
+        """Stream translated text chunks from the DSPy model."""
+        adapter = dspy.ChatAdapter() if reasoning else DisableReasoningAdapter()
+
+        async def generate_chunks():
+            with dspy.context(adapter=adapter):
+                output = self.stream_predict(
+                    source_text=source_text,
+                    source_language=source_language,
+                    target_language=target_language,
+                    domain=domain,
+                    tone=tone,
+                    glossary=glossary,
+                    context=context,
+                )
+                async for chunk in output:
+                    self.logger.info(str(chunk))
+                    if isinstance(chunk, StreamResponse):
+                        yield chunk.chunk
+
+        return generate_chunks()
+
+
+class DisableReasoningAdapter(dspy.ChatAdapter):
+    """Adapter that adds a no-think hint when reasoning is disabled."""
+
+    def format_user_message_content(
+        self,
+        signature: type[Signature],
+        inputs: dict[str, Any],
+        prefix: str = "",
+        suffix: str = "",
+        main_request: bool = False,
+    ) -> str:
+        custom_suffix = "\no_think"
+        return super().format_user_message_content(
+            signature=signature,
+            inputs=inputs,
+            prefix=prefix,
+            suffix=suffix + custom_suffix,
+            main_request=main_request,
         )
-        async for chunk in output:
-            if isinstance(chunk, dspy.Prediction):
-                yield chunk.translated_text
+
+
+class SwissGermanStreamListener(StreamListener):
+    """Stream listener that normalizes Swiss German characters in streamed chunks."""
+
+    def __init__(
+        self,
+        signature_field_name: str,
+        predict: Any = None,
+        predict_name: str | None = None,
+        allow_reuse: bool = False,
+    ):
+        """
+        Extend StreamListener to accept DisableReasoningAdapter (a ChatAdapter subclass).
+        """
+        super().__init__(
+            signature_field_name=signature_field_name,
+            predict=predict,
+            predict_name=predict_name,
+            allow_reuse=allow_reuse,
+        )
+        self.adapter_identifiers["DisableReasoningAdapter"] = self.adapter_identifiers[
+            "ChatAdapter"
+        ]
+
+    @staticmethod
+    def _normalize_text(value: str) -> str:
+        """Replace German sharp S with its Swiss German equivalent."""
+        return value.replace("ß", "ss")
+
+    def _normalize_chunk_fields(self, chunk: ModelResponseStream) -> ModelResponseStream:
+        """Normalize both content and reasoning_content fields on a chunk."""
+        delta = chunk.choices[0].delta
+        if hasattr(delta, "content"):
+            content = getattr(delta, "content", None)
+            if content is not None:
+                delta.content = self._normalize_text(content)
+        if hasattr(delta, "reasoning_content"):
+            reasoning_content = getattr(delta, "reasoning_content", None)
+            if reasoning_content is not None:
+                delta.reasoning_content = self._normalize_text(reasoning_content)
+        return chunk
+
+    def receive(self, chunk: ModelResponseStream) -> StreamResponse | None:
+        """
+        Intercept streamed chunks to apply Swiss German normalization before yielding.
+
+        Normalization is applied to both standard content and reasoning content so the
+        parent StreamListener can continue handling buffering and chunk parsing without
+        having to know about the transformation.
+        """
+        normalized_chunk = self._normalize_chunk_fields(chunk)
+        delta = normalized_chunk.choices[0].delta
+
+        if getattr(delta, "content", None) is None:
+            reasoning_content = getattr(delta, "reasoning_content", None)
+            if reasoning_content is not None:
+                delta.content = reasoning_content
+
+        parent_result = super().receive(normalized_chunk)
+        if parent_result is None:
+            return None
+
+        if isinstance(parent_result.chunk, str):
+            parent_result.chunk = self._normalize_text(parent_result.chunk)
+        return parent_result
 
 
 def optimize_translation_module(
@@ -115,55 +202,11 @@ def optimize_translation_module(
     return cast(TranslationModule, optimized)
 
 
-def _optimize_translation_module(
-    base_program: TranslationModule,
-    trainset: Iterable[dspy.Example],
-    valset: Iterable[dspy.Example],
-    reflection_lm: dspy.LM,
-) -> TranslationModule:
-    """
-    Optimize a translation module using DSPy's GEPA optimizer.
-
-    Args:
-        base_program: The initial translation module.
-        trainset: Examples used to optimize prompts.
-        valset: Examples used to evaluate the optimizer.
-        reflection_lm: LM for reflection.
-    """
-
-    optimizer = dspy.GEPA(
-        metric=translation_metric_with_feedback,
-        auto="light",
-        reflection_lm=reflection_lm,
-    )
-
-    optimized: Module = optimizer.compile(
-        base_program,
-        trainset=list(trainset),
-        valset=list(valset),
-    )
-
-    return cast(TranslationModule, optimized)
-
-
 def translation_metric(
     gold: dspy.Example,
     pred: dspy.Prediction,
     trace=None,
 ) -> float:
-    return translation_metric_with_feedback(gold, pred).score
-
-
-def translation_metric_with_feedback(
-    gold: dspy.Example,
-    pred: dspy.Prediction,
-    trace=None,
-    pred_name: str | None = None,
-    pred_trace=None,
-) -> dspy.Prediction:
-    """
-    Compute a combined WER/CER score with feedback to guide GEPA.
-    """
     predicted = pred.translated_text
     reference = gold.translated_text
 
@@ -174,23 +217,4 @@ def translation_metric_with_feedback(
     combined_error = (wer_value + cer_value) / 2.0
     # DSPy maximizes the score, so we need to invert it
     score = max(0.0, 1.0 - combined_error)
-
-    feedback_lines = [
-        f"WER: {wer_value:.3f}, CER: {cer_value:.3f}, combined error: {combined_error:.3f}.",
-    ]
-
-    if wer_value > 0.3:
-        feedback_lines.append(
-            "High word-level error; ensure terminology and phrasing match the reference more closely."
-        )
-    if cer_value > 0.3:
-        feedback_lines.append(
-            "High character-level error; watch for spelling, diacritics, and punctuation fidelity."
-        )
-    if reference:
-        feedback_lines.append(f"Reference snippet: {reference[:200]}")
-    if predicted:
-        feedback_lines.append(f"Your output snippet: {predicted[:200]}")
-
-    feedback = " ".join(feedback_lines)
-    return dspy.Prediction(score=score, feedback=feedback)
+    return score

@@ -1,7 +1,3 @@
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
-from datetime import UTC, datetime
-
 import dspy
 from backend_common.fastapi_health_probes import health_probe_router
 from backend_common.fastapi_health_probes.router import ServiceDependency
@@ -17,8 +13,6 @@ from bs_translator_backend.models.error_response import ApiErrorException
 from bs_translator_backend.routers import convert_route, transcription_route, translation_route
 from bs_translator_backend.utils.load_env import load_env
 from bs_translator_backend.utils.logger import get_logger, init_logger
-
-CACHE_DURATION = 30  # seconds
 
 
 def _build_fastapi_app() -> FastAPI:
@@ -159,8 +153,9 @@ def create_app() -> FastAPI:
             model=config.llm_model,
             api_key=config.openai_api_key,
             api_base=config.openai_api_base_url,
-        )
+        ),
     )
+    dspy.configure_cache(enable_disk_cache=False, enable_memory_cache=False)
 
     _configure_cors(app=app, client_url=config.client_url, logger=logger)
     _register_routes(app=app, logger=logger)

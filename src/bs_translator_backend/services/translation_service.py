@@ -58,8 +58,6 @@ class TranslationService:
         if not config.source_language or config.source_language == DetectLanguage.AUTO:
             config.source_language = detect_language(text).value_or(Language.DE)
 
-        endswith_r = text.endswith("\r")
-
         text_chunks = self.text_chunk_service.chunk_text(text)
         context = ""
         for text_chunk in text_chunks:
@@ -68,31 +66,15 @@ class TranslationService:
                 target_language=get_language_name(config.target_language),
                 context=context,
                 source_text=text_chunk,
-                domain=config.domain,
-                tone=config.tone,
-                glossary=config.glossary,
+                domain=config.domain or "",
+                tone=config.tone or "",
+                glossary=config.glossary or "",
+                reasoning=config.reasoning,
             )
-
-            at_the_beginning = True
-
-            r = ""
-
-            async for text_chunk in translated_chunks:
-                if at_the_beginning and text_chunk.strip() == "":
-                    continue
-
-                at_the_beginning = False
-
-                # Replace '\n' with '\r\n' to preserve line breaks
-                text_chunk = text_chunk.replace("\n", "\r\n").replace("ß", "ss")
-
-                r += text_chunk
-
-                yield text_chunk
-            context = r
-        # If the last chunk ends with a newline, preserve it
-        if endswith_r:
-            yield "\r"
+            chunk = ""
+            async for chunk in translated_chunks:
+                context += chunk
+                yield chunk
 
     async def translate_image(
         self,
@@ -112,7 +94,7 @@ class TranslationService:
             bbox = txt.prov[0].bbox
 
             translated = ""
-            for chunk in self.translate_text(content, config):
+            async for chunk in self.translate_text(content, config):
                 translated += chunk
 
             yield ConversionImageTextEntry(

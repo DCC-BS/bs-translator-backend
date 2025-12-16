@@ -1,3 +1,4 @@
+import asyncio
 import re
 from collections.abc import Mapping
 from io import BytesIO
@@ -97,8 +98,23 @@ class DocumentConversionService:
         self.config = config
         self.client = httpx.AsyncClient(timeout=30.0)
 
-    async def __del__(self) -> None:
-        await self.client.aclose()
+    def __del__(self) -> None:
+        if self.client.is_closed:
+            return
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            return
+
+        if loop.is_running():
+            loop.create_task(self.client.aclose())
+            return
+
+        try:
+            loop.run_until_complete(self.client.aclose())
+        except RuntimeError:
+            # Event loop already closed; ignore cleanup in this case.
+            return
 
     async def fetch_docling_file_convert(
         self,
