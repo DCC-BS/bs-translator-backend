@@ -8,10 +8,10 @@ from fastapi.responses import JSONResponse, Response
 from structlog.stdlib import BoundLogger
 
 from bs_translator_backend.container import Container
-from bs_translator_backend.models.app_config import AppConfig
 from bs_translator_backend.models.error_codes import UNEXPECTED_ERROR
 from bs_translator_backend.models.error_response import ApiErrorException
 from bs_translator_backend.routers import convert_route, transcription_route, translation_route
+from bs_translator_backend.utils.app_config import AppConfig
 
 
 def _build_fastapi_app() -> FastAPI:

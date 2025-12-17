@@ -6,7 +6,7 @@ It handles text translation using LLM models with customizable parameters includ
 tone, domain, glossary, and context settings.
 """
 
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 from io import BytesIO
 from typing import final
 
@@ -41,11 +41,11 @@ class TranslationService:
         self,
         translation_module: TranslationModule,
         text_chunk_service: TextChunkService,
-        conversion_service: DocumentConversionService,
-    ):
+        conversion_service_factory: Callable[[], DocumentConversionService],
+    ) -> None:
         self.translation_module = translation_module
         self.text_chunk_service = text_chunk_service
-        self.conversion_service = conversion_service
+        self._conversion_service_factory = conversion_service_factory
 
     async def translate_text(
         self, text: str, config: TranslationConfig
@@ -83,9 +83,12 @@ class TranslationService:
         filename: str | None = None,
         content_type: str | None = None,
     ) -> AsyncGenerator[ConversionImageTextEntry, None]:
-        doc = await self.conversion_service.convert_to_docling(
-            image, config.source_language or DetectLanguage.AUTO, filename, content_type
-        )
+        """Translate text extracted from an image or document upload."""
+
+        async with self._conversion_service_factory() as conversion_service:
+            doc = await conversion_service.convert_to_docling(
+                image, config.source_language or DetectLanguage.AUTO, filename, content_type
+            )
 
         for txt in doc.texts:
             content = txt.text or ""

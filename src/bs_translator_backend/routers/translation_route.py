@@ -44,7 +44,7 @@ def create_router(
         return translation_service.get_supported_languages()
 
     @router.post("/text", summary="Translate text")
-    def translate_text(
+    async def translate_text(
         request: Request,
         translation_input: TranslationInput,
         x_client_id: Annotated[str | None, Header()],
@@ -68,10 +68,17 @@ def create_router(
             domain=translation_input.config.domain,
             tone=translation_input.config.tone,
         )
-        return StreamingResponse(
-            translation_service.translate_text(translation_input.text, translation_input.config),
-            media_type="text/plain",
-        )
+
+        async def generate_translation() -> AsyncGenerator[str, None]:
+            async for chunk in translation_service.translate_text(
+                translation_input.text, translation_input.config
+            ):
+                if await request.is_disconnected():
+                    logger.info("Client disconnected, stopping translation stream")
+                    break
+                yield chunk
+
+        return StreamingResponse(generate_translation(), media_type="text/plain")
 
     @router.post("/image", summary="Translate text in image")
     async def translate_image(

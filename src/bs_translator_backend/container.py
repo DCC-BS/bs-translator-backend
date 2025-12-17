@@ -22,15 +22,15 @@ class Container(containers.DeclarativeContainer):
         max_tokens=6000,
     )
 
-    document_conversion_service: providers.Singleton[DocumentConversionService] = (
-        providers.Singleton(DocumentConversionService, config=app_config)
+    document_conversion_service: providers.Factory[DocumentConversionService] = providers.Factory(
+        DocumentConversionService, config=app_config
     )
 
     translation_service: providers.Singleton[TranslationService] = providers.Singleton(
         TranslationService,
         translation_module=translation_module,
         text_chunk_service=text_chunk_service,
-        conversion_service=document_conversion_service,
+        conversion_service_factory=document_conversion_service.provider,
     )
 
     usage_tracking_service: providers.Singleton[UsageTrackingService] = providers.Singleton(

@@ -10,7 +10,7 @@ from backend_common.dspy_common import (
 from backend_common.logger import get_logger
 from dspy.streaming.messages import StreamResponse
 
-from bs_translator_backend.models.app_config import AppConfig
+from bs_translator_backend.utils.app_config import AppConfig
 
 
 class TranslationSignature(dspy.Signature):

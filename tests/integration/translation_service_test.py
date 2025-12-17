@@ -1,8 +1,9 @@
+from typing import cast
+
 import pytest
 from fastapi import UploadFile
 from starlette.datastructures import Headers
 
-from bs_translator_backend.models.app_config import AppConfig
 from bs_translator_backend.models.docling_response import (
     BoundingBox,
     DoclingDocument,
@@ -12,8 +13,10 @@ from bs_translator_backend.models.docling_response import (
 from bs_translator_backend.models.language import Language
 from bs_translator_backend.models.translation_config import TranslationConfig
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService
+from bs_translator_backend.services.dspy_config.translation_program import TranslationModule
 from bs_translator_backend.services.text_chunk_service import TextChunkService
 from bs_translator_backend.services.translation_service import TranslationService
+from bs_translator_backend.utils.app_config import AppConfig
 
 
 @pytest.fixture
@@ -40,8 +43,6 @@ class StubTranslationModule:
 
 @pytest.fixture
 def translation_service(app_config: AppConfig) -> TranslationService:
-    conversion_service = DocumentConversionService(app_config)
-
     async def fake_convert_to_docling(*args, **kwargs) -> DoclingDocument:
         bbox = BoundingBox(l=0, t=0, r=10, b=10)
         provenance = ProvenanceItem(page_no=1, bbox=bbox, charspan=(0, 5))
@@ -54,12 +55,15 @@ def translation_service(app_config: AppConfig) -> TranslationService:
         )
         return DoclingDocument(name="demo", texts=[text_item])
 
-    conversion_service.convert_to_docling = fake_convert_to_docling  # type: ignore[method-assign]
+    def conversion_service_factory() -> DocumentConversionService:
+        service = DocumentConversionService(app_config)
+        service.convert_to_docling = fake_convert_to_docling  # type: ignore[method-assign]
+        return service
 
     text_chunk_service = TextChunkService()
-    translation_module = StubTranslationModule()
+    translation_module = cast(TranslationModule, StubTranslationModule())
 
-    return TranslationService(translation_module, text_chunk_service, conversion_service)
+    return TranslationService(translation_module, text_chunk_service, conversion_service_factory)
 
 
 @pytest.mark.asyncio
