@@ -218,9 +218,7 @@ src/bs_translator_backend/
 └── utils/                      # Utility functions and helpers
     ├── cancelation.py         # Cancellation utilities
     ├── image_overlay.py       # Image overlay helpers
-    ├── language_detection.py  # Language detection utilities
-    ├── load_env.py            # Environment loading
-    └── logger.py              # Logging configuration
+    └── language_detection.py  # Language detection utilities
 ```
 
 

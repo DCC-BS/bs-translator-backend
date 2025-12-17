@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from collections import Counter
 
+from backend_common.logger import get_logger, init_logger
+
 from bs_translator_backend.services.dspy_config.dataset_loader import (
     CUSTOM_TEMPLATE_PATH,
     EUROPARL_SAMPLE_PATH,
     ensure_custom_template,
     get_or_create_europarl_samples,
 )
-from bs_translator_backend.utils.logger import get_logger, init_logger
 
 
 def main() -> None:

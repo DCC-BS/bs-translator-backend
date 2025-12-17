@@ -1,6 +1,7 @@
 import io
 from typing import Annotated
 
+from backend_common.logger import get_logger
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Form, Header, Request, UploadFile
 from fastapi.responses import StreamingResponse
@@ -10,9 +11,8 @@ from bs_translator_backend.container import Container
 from bs_translator_backend.models.language import DetectLanguage, LanguageOrAuto
 from bs_translator_backend.services.transcription_service import TranscriptionService
 from bs_translator_backend.services.usage_tracking_service import UsageTrackingService
-from bs_translator_backend.utils.logger import get_logger
 
-logger = get_logger("transcription_router")
+logger = get_logger(__name__)
 
 
 @inject

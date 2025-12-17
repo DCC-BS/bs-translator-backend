@@ -1,6 +1,7 @@
 import dspy
 from backend_common.fastapi_health_probes import health_probe_router
 from backend_common.fastapi_health_probes.router import ServiceDependency
+from backend_common.logger import get_logger, init_logger
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
@@ -11,8 +12,6 @@ from bs_translator_backend.models.app_config import AppConfig
 from bs_translator_backend.models.error_codes import UNEXPECTED_ERROR
 from bs_translator_backend.models.error_response import ApiErrorException
 from bs_translator_backend.routers import convert_route, transcription_route, translation_route
-from bs_translator_backend.utils.load_env import load_env
-from bs_translator_backend.utils.logger import get_logger, init_logger
 
 
 def _build_fastapi_app() -> FastAPI:
@@ -83,7 +82,7 @@ def _configure_container(app: FastAPI, logger: BoundLogger) -> Container:
     Configure the dependency injection container and attach it to app state.
     """
     logger.debug("Configuring dependency injection container")
-    container = Container(app_config=AppConfig.from_env())
+    container = Container()
     container.wire(modules=[translation_route, convert_route, transcription_route])
     container.check_dependencies()
     logger.info("Dependency injection configured")
@@ -133,7 +132,6 @@ def create_app() -> FastAPI:
     """
 
     init_logger()
-    load_env()
 
     logger = get_logger("app")
     logger.info("Starting Text Mate API application")

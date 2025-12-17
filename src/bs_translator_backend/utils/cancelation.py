@@ -1,9 +1,8 @@
 from contextlib import asynccontextmanager
 
 from anyio import create_task_group
+from backend_common.logger import get_logger
 from fastapi import Request
-
-from bs_translator_backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

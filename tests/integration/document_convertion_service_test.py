@@ -6,15 +6,10 @@ from bs_translator_backend.models.app_config import AppConfig
 from bs_translator_backend.models.conversion_result import ConversionResult
 from bs_translator_backend.models.language import DetectLanguage
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService
-from bs_translator_backend.utils.load_env import load_env
 
 
 @pytest.fixture
 def app_config() -> AppConfig:
-    load_env()
-
-    # Provide a minimal AppConfig stub
-    # Adjust the constructor as needed to match your AppConfig definition
     return AppConfig.from_env()
 
 

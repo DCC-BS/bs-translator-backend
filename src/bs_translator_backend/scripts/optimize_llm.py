@@ -3,8 +3,10 @@ from datetime import datetime
 from pathlib import Path
 
 import dspy
+from backend_common.dspy_common import edit_distance_metric
+from backend_common.logger import get_logger, init_logger
 
-from bs_translator_backend.models.app_config import AppConfig
+from bs_translator_backend.container import Container
 from bs_translator_backend.services.dspy_config.dataset_loader import (
     EUROPARL_SAMPLE_PATH,
     combined_splits,
@@ -12,17 +14,14 @@ from bs_translator_backend.services.dspy_config.dataset_loader import (
 from bs_translator_backend.services.dspy_config.translation_program import (
     TranslationModule,
     optimize_translation_module,
-    translation_metric_with_feedback,
 )
-from bs_translator_backend.utils.load_env import load_env
-from bs_translator_backend.utils.logger import get_logger, init_logger
 
 
 def evaluate_program(program: TranslationModule, valset: Iterable[dspy.Example]) -> None:
     run_name = f"eval_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv"
     evaluate = dspy.Evaluate(
         devset=list(valset),
-        metric=translation_metric_with_feedback,
+        metric=edit_distance_metric,
         num_threads=2,
         display_table=True,
         display_progress=True,
@@ -37,9 +36,9 @@ def evaluate_program(program: TranslationModule, valset: Iterable[dspy.Example])
 def main() -> None:
     init_logger()
     logger = get_logger("optimize_llm")
+    container = Container()
 
-    load_env()
-    config = AppConfig.from_env()
+    config = container.app_config()
 
     inference_lm = dspy.LM(
         model=config.llm_model,

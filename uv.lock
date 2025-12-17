@@ -145,8 +145,12 @@ wheels = [
 [[package]]
 name = "backend-common"
 version = "0.0.1"
-source = { git = "https://github.com/DCC-BS/backend-common#eab5fd28893247779ffaf9e4e13033f8877b9ef2" }
+source = { git = "https://github.com/DCC-BS/backend-common#ad0771cc91affa50ffd8ac13c4e9a4902315f85b" }
 dependencies = [
+    { name = "datasets" },
+    { name = "dspy" },
+    { name = "jiwer" },
+    { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "structlog" },
 ]

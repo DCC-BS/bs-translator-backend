@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, BinaryIO, final
 
 import httpx
+from backend_common.logger import get_logger
 from fastapi import status
 from starlette.datastructures import UploadFile
 
@@ -23,7 +24,6 @@ from bs_translator_backend.models.error_codes import (
 )
 from bs_translator_backend.models.error_response import ApiErrorException
 from bs_translator_backend.models.language import DetectLanguage, LanguageOrAuto
-from bs_translator_backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -97,6 +97,7 @@ class DocumentConversionService:
     def __init__(self, config: AppConfig) -> None:
         self.config = config
         self.client = httpx.AsyncClient(timeout=30.0)
+        self._cleanup_task: asyncio.Task[None] | None = None
 
     def __del__(self) -> None:
         if self.client.is_closed:
@@ -107,7 +108,7 @@ class DocumentConversionService:
             return
 
         if loop.is_running():
-            loop.create_task(self.client.aclose())
+            self._cleanup_task = loop.create_task(self.client.aclose())
             return
 
         try:

@@ -18,12 +18,10 @@ from bs_translator_backend.utils.image_overlay import (
     create_side_by_side_comparison,
     overlay_translations_on_image,
 )
-from bs_translator_backend.utils.load_env import load_env
 
 
 @pytest.fixture
 def app_config() -> AppConfig:
-    load_env()
     return AppConfig.from_env()
 
 

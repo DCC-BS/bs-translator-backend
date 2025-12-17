@@ -1,6 +1,7 @@
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
+from backend_common.logger import get_logger
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Header, Request, UploadFile
 from fastapi.params import Form
@@ -11,13 +12,12 @@ from bs_translator_backend.models.translation_config import TranslationConfig
 from bs_translator_backend.models.translation_input import TranslationInput
 from bs_translator_backend.services.translation_service import TranslationService
 from bs_translator_backend.services.usage_tracking_service import UsageTrackingService
-from bs_translator_backend.utils.logger import get_logger
 
-logger = get_logger("translation_router")
+logger = get_logger(__name__)
 
 
 @inject
-def create_router(  # noqa: C901
+def create_router(
     translation_service: TranslationService = Provide[Container.translation_service],
     usage_tracking_service: UsageTrackingService = Provide[Container.usage_tracking_service],
 ) -> APIRouter:
