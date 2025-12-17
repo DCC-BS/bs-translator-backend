@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import dspy
-from datasets import Dataset, load_dataset
+from datasets import load_dataset
 
 EUROPARL_LANGUAGES = ["de", "en", "es", "it", "fr", "pl", "ro", "sl", "nl", "fi"]
 LANGUAGE_CODES_TO_NAMES = {
@@ -37,12 +37,12 @@ def _ensure_data_dir(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
 
-def _load_subset(pair: tuple[str, str], sample_size: int) -> Dataset:
+def _load_subset(pair: tuple[str, str], sample_size: int):
     """Load a shuffled subset of Europarl for the requested pair."""
     lang_a, lang_b = sorted(pair)
     split = "train[:5000]"
-    dataset: Dataset = load_dataset("Helsinki-NLP/europarl", f"{lang_a}-{lang_b}", split=split)
-    return dataset.shuffle(seed=42).select(range(min(sample_size, len(dataset))))
+    dataset = load_dataset("Helsinki-NLP/europarl", f"{lang_a}-{lang_b}", split=split)
+    return dataset.shuffle(seed=42).select(range(min(sample_size, len(dataset))))  # pyright: ignore
 
 
 def _rows_for_direction(
@@ -190,7 +190,8 @@ def load_custom_data_with_split(
         for row in reader:
             rows.append(row)
 
-    rng = Random(42)
+    RANDOM_SEED = 42
+    rng = Random(RANDOM_SEED)  # noqa: S311
     rng.shuffle(rows)
 
     n = len(rows)

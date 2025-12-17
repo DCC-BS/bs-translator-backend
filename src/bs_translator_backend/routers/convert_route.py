@@ -19,12 +19,10 @@ logger = get_logger(__name__)
 
 @inject
 def create_router(
-    document_conversion_service_factory: Callable[
-        [], DocumentConversionService
-    ] = Provide[Container.document_conversion_service.provider],
-    usage_tracking_service: UsageTrackingService = Provide[
-        Container.usage_tracking_service
+    document_conversion_service_factory: Callable[[], DocumentConversionService] = Provide[
+        Container.document_conversion_service.provider
     ],
+    usage_tracking_service: UsageTrackingService = Provide[Container.usage_tracking_service],
 ) -> APIRouter:
     """
     Create and configure the document conversion API router.
@@ -63,9 +61,7 @@ def create_router(
         )
 
         async with document_conversion_service_factory() as conversion_service:
-            task = asyncio.create_task(
-                conversion_service.convert(file, source_language)
-            )
+            task = asyncio.create_task(conversion_service.convert(file, source_language))
 
             while task.done() is False:
                 await asyncio.sleep(0.1)
