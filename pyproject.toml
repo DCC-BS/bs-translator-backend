@@ -1,6 +1,6 @@
 [project]
 name = "bs-translator-backend"
-version = "0.0.2"
+version = "0.0.3"
 authors = [{name = "Data Competence Center Basel-Stadt", email = "dcc@bs.ch" },{ name = "Tobias Bollinger", email = "tobias.bollinger@bs.ch" }]
 readme = "README.md"
 keywords = ['python']
