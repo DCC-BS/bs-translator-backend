@@ -1,3 +1,5 @@
+# pyrefly: ignore-errors
+
 import os
 from collections.abc import AsyncIterator, Callable, Iterable
 
