@@ -68,6 +68,7 @@ def optimize_translation_module(
     reflection_lm: dspy.LM,
     task_lm: dspy.LM,
 ) -> TranslationModule:
+    """Optimize the translation module using MIPRO with edit distance metric."""
     optimizer = dspy.MIPROv2(
         prompt_model=reflection_lm, task_model=task_lm, metric=edit_distance_metric
     )
