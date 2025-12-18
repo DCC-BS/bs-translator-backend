@@ -2,13 +2,14 @@ import re
 from collections.abc import Mapping
 from io import BytesIO
 from pathlib import Path
-from typing import Any, BinaryIO, final
+from types import TracebackType
+from typing import Any, BinaryIO, Self, final
 
 import httpx
+from backend_common.logger import get_logger
 from fastapi import status
 from starlette.datastructures import UploadFile
 
-from bs_translator_backend.models.app_config import AppConfig
 from bs_translator_backend.models.conversion_result import Base64EncodedImage, ConversionResult
 from bs_translator_backend.models.docling_response import (
     DoclingDocument,
@@ -22,7 +23,7 @@ from bs_translator_backend.models.error_codes import (
 )
 from bs_translator_backend.models.error_response import ApiErrorException
 from bs_translator_backend.models.language import DetectLanguage, LanguageOrAuto
-from bs_translator_backend.utils.logger import get_logger
+from bs_translator_backend.utils.app_config import AppConfig
 
 logger = get_logger(__name__)
 
@@ -97,8 +98,28 @@ class DocumentConversionService:
         self.config = config
         self.client = httpx.AsyncClient(timeout=30.0)
 
-    async def __del__(self) -> None:
+    async def aclose(self) -> None:
+        """Close the underlying HTTP client if it is still open."""
+
+        if self.client.is_closed:
+            return
+
         await self.client.aclose()
+
+    async def __aenter__(self) -> Self:
+        """Return the service instance for use within an async context."""
+
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        """Ensure the HTTP client is closed when leaving an async context."""
+
+        await self.aclose()
 
     async def fetch_docling_file_convert(
         self,

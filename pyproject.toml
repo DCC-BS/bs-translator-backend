@@ -19,15 +19,17 @@ classifiers = [
 ]
 dependencies = [
     "dependency-injector>=4.48.1",
+    "dspy>=3.0.4",
     "fastapi[standard]>=0.116.1",
     "httpx>=0.28.1",
     "langdetect>=1.0.9",
-    "llama-index-core>=0.12.34.post1",
-    "llama-index-llms-openai>=0.3.38",
+    "datasets>=3.1.0",
     "openai>=1.97.0",
+    "jiwer>=4.0.0",
     "python-dotenv>=1.0.1",
     "returns>=0.26.0",
     "structlog>=25.1.0",
+    "backend-common[fastapi]",
 ]
 
 [project.urls]
@@ -47,6 +49,12 @@ dev = [
     "pytest-asyncio>=1.1.0",
     "pyrefly>=0.45.2",
 ]
+
+
+[project.scripts]
+optimize-translation = "bs_translator_backend.scripts.optimize_llm:main"
+prepare-dataset = "bs_translator_backend.scripts.prepare_dataset:main"
+
 
 [build-system]
 requires = ["hatchling"]
@@ -99,6 +107,7 @@ ignore = [
     "E501",
     # DoNotAssignLambda
     "E731",
+    "TRY003"
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -154,3 +163,6 @@ allow_untyped_globals = false
 # Package configuration
 namespace_packages = true
 explicit_package_bases = true
+
+[tool.uv.sources]
+backend-common = { git = "https://github.com/DCC-BS/backend-common" }

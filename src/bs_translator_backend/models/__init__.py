@@ -1,6 +1,5 @@
 """Pydantic models for the bs-translator-backend application."""
 
-from .app_config import AppConfig
 from .conversion_result import ConversionOutput, ConversionResult
 from .docling_response import (
     ConversionStatus,
@@ -15,7 +14,6 @@ from .translation_config import TranslationConfig
 from .translation_input import TranslationInput
 
 __all__ = [
-    "AppConfig",
     "ConversionOutput",
     "ConversionResult",
     "ConversionStatus",

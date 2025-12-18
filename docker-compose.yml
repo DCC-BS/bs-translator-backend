@@ -88,6 +88,35 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
+  # dots-ocr-translator:
+  #   platform: linux/amd64
+  #   image: vllm/vllm-openai:v0.12.0
+  #   container_name: vllm-dots-ocr-translator
+  #   ports:
+  #     - ${OCR_API_PORT}:8005
+  #   environment:
+  #     - HF_AUTH_TOKEN=${HF_AUTH_TOKEN}
+  #   runtime: nvidia
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             device_ids: ["1"]
+  #             capabilities: [gpu]
+  #   ipc: host
+  #   volumes:
+  #     - ${HUGGING_FACE_CACHE_DIR}:/root/.cache/huggingface
+  #   command: >
+  #     rednote-hilab/dots.ocr
+  #     --port 8005
+  #     --trust-remote-code
+  #     --async-scheduling
+  #     --max-model-len 10000
+  #     --max-num-seqs 1
+  #     --gpu-memory-utilization 0.4
+  #     --uvicorn-log-level warning
+  #     --disable-log-requests
 
 volumes:
   hugging_face_cache:

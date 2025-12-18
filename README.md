@@ -17,19 +17,18 @@ BS Translator Backend is a powerful Python FastAPI service that provides advance
 
 ## Technology Stack
 
-- **Framework**: [FastAPI](https://fastapi.tiangolo.com/) with Python 3.12+
+- **Framework**: [FastAPI](https://fastapi.tiangolo.com/) with Python 3.13
 - **Package Manager**: [uv](https://github.com/astral-sh/uv)
 - **Dependency Injection**: Dependency-Injector
-- **LLM Integration**: LlamaIndex for LLM model integration
+- **LLM Orchestration**: [DSPy](https://github.com/stanfordnlp/dspy) with OpenAI/vLLM-compatible endpoints
 - **Document Processing**: Docling for document conversion
 - **Containerization**: Docker and Docker Compose
-- **AI Models**: vLLM for serving Qwen3 32B model
 
 ## Setup
 
 ### Prerequisites
 
-- Python 3.12+
+- Python 3.13
 - uv package manager
 - Docker and Docker Compose (for containerized deployment)
 - NVIDIA GPU with CUDA support (for LLM services)
@@ -39,22 +38,32 @@ BS Translator Backend is a powerful Python FastAPI service that provides advance
 Create a `.env` file in the project root with the required environment variables:
 
 ```env
-# Hugging Face Configuration
+# Hugging Face Configuration (optional)
 HF_AUTH_TOKEN=your_hugging_face_token_here
 HUGGING_FACE_CACHE_DIR=~/.cache/huggingface
 
-# LLM Service Configuration
+# LLM Service Configuration (vLLM/OpenAI-compatible)
 LLM_API_PORT=8001
 OPENAI_API_BASE_URL=http://localhost:${LLM_API_PORT}/v1
-OPENAI_API_KEY=none
-LLM_MODEL=Qwen/Qwen3-32B-AWQ
+OPENAI_API_KEY='none'
+LLM_MODEL='ISTA-DASLab/gemma-3-27b-it-GPTQ-4b-128g'
+
+# Optional DSPy optimizer (used by optimize_llm.py)
+OPTIMIZER_API_KEY=
+OPTIMIZER_MODEL=
+OPTIMIZER_API_BASE_URL=
 
 # Client Configuration
 CLIENT_PORT=3000
 CLIENT_URL=http://localhost:${CLIENT_PORT}
+
+# Service URLs and auth
+HMAC_SECRET='your_hmac_secret' # generate with openssl rand 32 | base64
+DOCLING_URL='http://localhost:8004/v1'
+WHISPER_URL='http://localhost:50001/v1'
 ```
 
-> **Note:** The `HF_AUTH_TOKEN` is required for Hugging Face API access. You can create a token [here](https://huggingface.co/settings/tokens).
+> **Note:** The optimizer values are only needed when running DSPy optimization scripts. The `HF_AUTH_TOKEN` is required for Hugging Face API access and model downloads; you can create a token [here](https://huggingface.co/settings/tokens).
 
 ### Install Dependencies
 
@@ -74,7 +83,7 @@ This will:
 ### Start the Development Server
 
 ```bash
-uv run fastapi dev ./src/bs_translator_backend/app.py
+make dev
 ```
 
 ### Code Quality Tools
@@ -121,7 +130,7 @@ docker compose logs -f
 ```
 
 The Docker Compose setup includes:
-- **vLLM Service**: Serves the Qwen3 32B model with GPU acceleration
+- **vLLM Service**: Serves the configured model with GPU acceleration
 - **Backend API**: FastAPI application for translation services
 
 ### Using Dockerfile Only
@@ -145,6 +154,14 @@ make test
 # Run tests with pytest directly
 uv run python -m pytest --doctest-modules
 ```
+
+### DSPy Translation Optimization
+
+- Prepare sample and custom datasets (writes CSVs under `src/bs_translator_backend/data/`):
+  - `uv run prepare-dataset`
+- Optimize the translation module with DSPy (requires `OPTIMIZER_*` env vars):
+  - `uv run optimize-translation`
+  - Outputs an updated `translation_module.pkl` used by the API for streaming translations.
 
 ## API Endpoints
 
@@ -174,6 +191,7 @@ The translation service supports the following customizable parameters:
 src/bs_translator_backend/
 ├── app.py                      # FastAPI application entry point
 ├── container.py                # Dependency injection container
+├── data/                       # Dataset files
 ├── models/                     # Data models and schemas
 │   ├── app_config.py          # Application configuration
 │   ├── conversion_result.py   # Document conversion models
@@ -183,20 +201,24 @@ src/bs_translator_backend/
 ├── routers/                    # API endpoint definitions
 │   ├── convert_route.py       # Document conversion endpoints
 │   └── translation_route.py   # Translation endpoints
+├── scripts/                    # Offline utilities
+│   ├── optimize_llm.py        # DSPy optimization entry point
+│   └── prepare_dataset.py     # Dataset preparation helper
 ├── services/                   # Business logic services
 │   ├── document_conversion_service.py  # Document processing
-│   ├── llm_facade.py          # LLM integration facade
+│   ├── dspy_config/           # DSPy translation program and assets
+│   │   ├── dataset_loader.py  # Dataset loading and sampling
+│   │   ├── translation_program.py # DSPy translation module
+│   │   ├── translation_module.pkl # Optimized module artifact
+│   │   └── small_translation_module.pkl # Lightweight module
 │   ├── text_chunk_service.py  # Text chunking utilities
-│   └── translation_service.py # Translation logic
-├── translator/                 # Translation implementations
-│   ├── base_translator.py     # Base translator interface
-│   ├── docx_translator.py     # DOCX document translator
-│   ├── pdf_translator.py      # PDF document translator
-│   └── text_translator.py     # Plain text translator
+│   ├── transcription_service.py # Whisper transcription integration
+│   ├── translation_service.py # Translation logic
+│   └── usage_tracking_service.py # Request tracking
 └── utils/                      # Utility functions and helpers
-    ├── language_detection.py  # Language detection utilities
-    ├── load_env.py            # Environment loading
-    └── logger.py              # Logging configuration
+    ├── cancelation.py         # Cancellation utilities
+    ├── image_overlay.py       # Image overlay helpers
+    └── language_detection.py  # Language detection utilities
 ```
 
 
