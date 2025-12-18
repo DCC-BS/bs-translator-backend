@@ -1,5 +1,5 @@
 import os
-from collections.abc import AsyncIterator, Iterable
+from collections.abc import AsyncIterator, Callable, Iterable
 
 import dspy
 from backend_common.dspy_common import (
@@ -40,7 +40,9 @@ class TranslationModule(AbstractDspyModule):
         stream_listener = SwissGermanStreamListener(
             signature_field_name="translated_text", allow_reuse=True
         )
-        self.stream_predict = dspy.streamify(self.predict, stream_listeners=[stream_listener])
+        self.stream_predict: Callable[..., AsyncIterator[StreamResponse]] = dspy.streamify(
+            self.predict, stream_listeners=[stream_listener]
+        )
         self.logger = get_logger(__name__)
         if os.path.exists(app_config.translation_module_path):
             self.load(app_config.translation_module_path)
@@ -57,8 +59,7 @@ class TranslationModule(AbstractDspyModule):
         # Runs inside the adapter-aware dspy.context created by AbstractDspyModule.stream
         output = self.stream_predict(**kwargs)
         async for chunk in output:
-            self.logger.info(str(chunk))
-            yield chunk  # AbstractDspyModule.stream converts StreamResponse to text
+            yield chunk
 
 
 def optimize_translation_module(
