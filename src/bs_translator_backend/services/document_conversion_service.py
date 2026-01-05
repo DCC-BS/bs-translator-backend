@@ -123,7 +123,7 @@ class DocumentConversionService:
 
     async def fetch_docling_file_convert(
         self,
-        files: Mapping[str, tuple[str, BinaryIO | BytesIO, str]],
+        files: dict[str, tuple[str, BinaryIO, str]],
         options: dict[str, str | list[str] | bool],
     ) -> httpx.Response:
         response = await self.client.post(
@@ -178,10 +178,11 @@ class DocumentConversionService:
         else:
             # It's a BytesIO object
             content = file.read()
-            filename = filename or "uploaded_document"
+            filename: str = filename or "uploaded_document"
             if content_type is None:
-                content_type = get_mimetype(Path(filename))
+                content_type: str = get_mimetype(Path(filename))
 
+        assert isinstance(content_type, str)
         validate_mimetype(content_type, logger_context={"content_type": content_type})
 
         files = {"files": (filename, BytesIO(content), content_type)}
@@ -237,15 +238,15 @@ class DocumentConversionService:
             filename = file.filename or "uploaded_document"
             logger.info(f"Filename from UploadFile: {filename}")
             if content_type is None:
-                content_type = get_mimetype(Path(filename))
+                content_type: str = get_mimetype(Path(filename))
         else:
             logger.info("File is not an UploadFile instance")
             # It's a BytesIO object
             content = file.read()
-            filename = filename or "uploaded_document"
+            filename: str = filename or "uploaded_document"
             if content_type is None:
-                content_type = get_mimetype(Path(filename))
-
+                content_type: str = get_mimetype(Path(filename))
+        assert isinstance(content_type, str)
         validate_mimetype(content_type, logger_context={"content_type": content_type})
 
         files = {"files": (filename, BytesIO(content), content_type)}

@@ -47,7 +47,7 @@ dev = [
     "ruff>=0.9.2",
     "rich>=13.9.4",
     "pytest-asyncio>=1.1.0",
-    "pyrefly>=0.45.2",
+    "ty>=0.0.8",
 ]
 
 

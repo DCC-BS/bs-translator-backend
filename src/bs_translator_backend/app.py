@@ -3,8 +3,8 @@ from backend_common.fastapi_health_probes import health_probe_router
 from backend_common.fastapi_health_probes.router import ServiceDependency
 from backend_common.logger import get_logger, init_logger
 from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
+from starlette.middleware.cors import CORSMiddleware
 from structlog.stdlib import BoundLogger
 
 from bs_translator_backend.container import Container
@@ -96,8 +96,9 @@ def _configure_cors(app: FastAPI, client_url: str, logger: BoundLogger) -> None:
     Apply CORS middleware configuration.
     """
     logger.debug("Setting up CORS middleware")
+
     app.add_middleware(
-        CORSMiddleware,
+        CORSMiddleware,  # ty:ignore[invalid-argument-type]
         allow_origins=[client_url],
         allow_credentials=True,
         allow_methods=["*"],
