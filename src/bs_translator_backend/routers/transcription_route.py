@@ -1,7 +1,7 @@
 import io
 from typing import Annotated
 
-from backend_common.logger import get_logger
+from dcc_backend_common.logger import get_logger
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Form, Header, Request, UploadFile
 from fastapi.responses import StreamingResponse

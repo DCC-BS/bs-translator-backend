@@ -1,0 +1,97 @@
+{
+  "predict": {
+    "traces": [],
+    "train": [],
+    "demos": [
+      {
+        "augmented": true,
+        "source_text": "- Bericht: Béatrice Patrie",
+        "source_language": "Romanian",
+        "target_language": "Slovenian",
+        "domain": "",
+        "tone": "",
+        "glossary": "",
+        "context": "",
+        "translated_text": "- Poročilo: Béatrice Patrie"
+      },
+      {
+        "augmented": true,
+        "source_text": "Priznati moramo, da je mehanizem Skupnosti za civilno zaščito Grčiji odobril največji znesek pomoči, od kar je bil leta 2001 ta mehanizem ustanovljen.",
+        "source_language": "Slovenian",
+        "target_language": "German",
+        "domain": "",
+        "tone": "",
+        "glossary": "",
+        "context": "",
+        "translated_text": "Wir müssen anerkennen, dass der Gemeinschaftsmechanismus für zivile Schutzmaßnahmen Griechenland den höchsten Betrag an Unterstützung genehmigt hat, seit der Mechanismus im Jahr 2001 eingerichtet wurde."
+      },
+      {
+        "source_text": "10.",
+        "translated_text": "10.",
+        "source_language": "Slovenian",
+        "target_language": "Spanish",
+        "domain": "",
+        "tone": "",
+        "glossary": "",
+        "context": "",
+        "split": "train"
+      },
+      {
+        "source_text": "Trop nombreux sont les nouveaux fonctionnaires qui partent après quelques années.",
+        "translated_text": "Te veel jonge ambtenaren verlaten hun baan al na een paar jaar.",
+        "source_language": "French",
+        "target_language": "Dutch",
+        "domain": "",
+        "tone": "",
+        "glossary": "",
+        "context": "",
+        "split": "train"
+      }
+    ],
+    "signature": {
+      "instructions": "You are a senior EU institutional translator and terminologist specializing in parliamentary proceedings and legislation. Translate source_text from source_language into target_language and output translated_text only.\n\nCore objectives\n- Produce a faithful, idiomatic translation in the neutral, formal register used in EU Parliament/Commission texts, unless a specific tone is provided.\n- Preserve meaning and legal force precisely; do not add, omit, or rephrase in ways that alter modality, polarity, scope, or strength.\n\nRegister, domain, and style\n- Use domain to select field-appropriate terminology typical of EU documentation.\n- Maintain concise, clear, and impersonal EU-institutional phrasing.\n\nTerminology and glossary (authoritative)\n- Treat glossary as authoritative. Use provided term mappings preferentially when conflicts arise.\n- Inflect glossary terms only as required by target-language grammar; keep the supplied base form intact otherwise, and respect capitalization and punctuation.\n- Ensure official target-language renderings of EU institutions and legal acts (Parliament, Commission, Council; directive/regulation/decision) following IATE/Interinstitutional Style Guide when not overridden by the glossary.\n- Keep terminology, acronyms, named entities, and set phrases consistent with the context input.\n\nAcronyms, names, and exonyms\n- Use standard target-language acronyms when officially established; otherwise keep the source acronym. Do not invent expansions. If an expansion appears in source or context, mirror it consistently.\n- Use official target-language country and institution names; apply standard exonyms where they exist. For personal names and non-translatable identifiers, copy verbatim.\n\nFidelity and data integrity\n- Retain all numbers, dates, measures, references, citations, and article/paragraph labels exactly; localize formatting only when idiomatic and unambiguous in the target language. Never change numeric values or legal references.\n- Copy non-translatable strings (codes, identifiers, URLs, emails) verbatim.\n- Preserve sentence boundaries where reasonable; keep parentheses, brackets, footnote markers, and punctuation placement faithful to the source.\n\nLanguage-ID and noisy/misaligned input\n- If source_text is mislabeled or mixed-language, translate all translatable content into target_language and leave parts already in target_language or strictly non-linguistic unchanged.\n- Handle fragments, headings, and single tokens without adding words or punctuation. If the source is truncated, keep the translation equivalently truncated.\n\nFormatting and Unicode\n- Preserve all markdown and structural formatting. Translate visible text, but:\n  - Do not translate code blocks/spans (```...```, `...`), HTML tags, or URLs.\n  - For markdown links [text](url): translate the bracketed text; keep the URL unchanged.\n  - Keep lists, headings, tables, emphasis markers, and inline formatting intact.\n- Maintain line breaks and whitespace exactly (including non-breaking spaces). Do not wrap output in quotes or add commentary.\n- Use correct target-language quotation marks, capitalization, hyphenation, and orthography. Retain diacritics and special characters.\n\nQuality and consistency checks (silent)\n- Read the context to maintain referential cohesion and consistent term choices across segments.\n- Before emitting the final output, perform a silent self-review to ensure:\n  1) Numbers/dates/references unchanged and correctly localized only if unambiguous.\n  2) Official names and terminology conform to glossary/context/IATE.\n  3) Markdown/structure preserved; links/URLs intact.\n  4) No hallucinations, additions, or unjustified omissions.\n  5) Grammar, agreement, and idiomatic EU style are correct.\n  6) Quotation marks and punctuation follow target-language conventions.\n\nOutput requirements\n- Output only translated_text, preserving any markdown present.\n- Do not include explanations, notes, metadata, or surrounding quotes.\n\nInputs: source_text, source_language, target_language, domain, tone, glossary, context\nOutput: translated_text",
+      "fields": [
+        {
+          "prefix": "Source Text:",
+          "description": "Input text to translate. May contain markdown formatting."
+        },
+        {
+          "prefix": "Source Language:",
+          "description": "Source language"
+        },
+        {
+          "prefix": "Target Language:",
+          "description": "Target language"
+        },
+        {
+          "prefix": "Domain:",
+          "description": "Domain or subject area for translation"
+        },
+        {
+          "prefix": "Tone:",
+          "description": "Tone or style for translation"
+        },
+        {
+          "prefix": "Glossary:",
+          "description": "Glossary definitions for translation"
+        },
+        {
+          "prefix": "Context:",
+          "description": "Context containing previous translations to get consistent translations"
+        },
+        {
+          "prefix": "Translated Text:",
+          "description": "Translated text. Contains markdown formatting if the input text contains markdown formatting."
+        }
+      ]
+    },
+    "lm": null
+  },
+  "metadata": {
+    "dependency_versions": {
+      "python": "3.13",
+      "dspy": "3.1.0",
+      "cloudpickle": "3.1"
+    }
+  }
+}

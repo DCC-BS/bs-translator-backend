@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 
 from anyio import create_task_group
-from backend_common.logger import get_logger
+from dcc_backend_common.logger import get_logger
 from fastapi import Request
 
 logger = get_logger(__name__)

@@ -6,7 +6,7 @@ from types import TracebackType
 from typing import Any, BinaryIO, Self, final
 
 import httpx
-from backend_common.logger import get_logger
+from dcc_backend_common.logger import get_logger
 from fastapi import status
 from starlette.datastructures import UploadFile
 

@@ -1,6 +1,6 @@
 import os
 
-from backend_common.config import AbstractAppConfig, get_env_or_throw, log_secret
+from dcc_backend_common.config import AbstractAppConfig, get_env_or_throw, log_secret
 from pydantic import Field
 
 
@@ -8,15 +8,6 @@ class AppConfig(AbstractAppConfig):
     openai_api_base_url: str = Field(description="The base URL for the OpenAI API")
     openai_api_key: str = Field(description="The API key for authenticating with OpenAI")
     llm_model: str = Field(description="The language model to use for text generation")
-    optimizer_api_key: str = Field(
-        default="", description="API key for optimizer/proposal LM (defaults to OPENAI_API_KEY)"
-    )
-    optimizer_model: str = Field(
-        default="", description="Model to use for optimization (default: gpt-4o-mini)"
-    )
-    optimizer_api_base_url: str = Field(
-        default="", description="Optional base URL for optimizer LM (default OpenAI endpoint)"
-    )
     reasoning: bool = Field(
         default=False,
         description="Enable LLM reasoning; when false, disable with /no_think hint",
@@ -36,9 +27,6 @@ class AppConfig(AbstractAppConfig):
         openai_api_base_url: str = get_env_or_throw("OPENAI_API_BASE_URL")
         openai_api_key: str = get_env_or_throw("OPENAI_API_KEY")
         llm_model: str = get_env_or_throw("LLM_MODEL")
-        optimizer_api_key: str = os.getenv("OPTIMIZER_API_KEY", "")
-        optimizer_model: str = os.getenv("OPTIMIZER_MODEL", "")
-        optimizer_api_base_url: str = os.getenv("OPTIMIZER_API_BASE_URL", "")
         reasoning_raw = os.getenv("LLM_REASONING", "false").lower()
         reasoning = reasoning_raw in {"1", "true", "yes", "on"}
         client_url: str = get_env_or_throw("CLIENT_URL")
@@ -49,10 +37,7 @@ class AppConfig(AbstractAppConfig):
         return cls(
             openai_api_base_url=openai_api_base_url,
             openai_api_key=openai_api_key,
-            llm_model="openai/" + llm_model,  # Use openai prefix for DSPy
-            optimizer_api_key=optimizer_api_key,
-            optimizer_model="openai/" + optimizer_model,  # Use openai prefix for DSPy
-            optimizer_api_base_url=optimizer_api_base_url,
+            llm_model=llm_model,
             reasoning=reasoning,
             client_url=client_url,
             docling_url=docling_url,
@@ -71,9 +56,6 @@ class AppConfig(AbstractAppConfig):
             docling_url={self.docling_url}
             whisper_url={self.whisper_url}
             translation_module_path={self.translation_module_path}
-            optimizer_api_key={log_secret(self.optimizer_api_key)}
-            optimizer_model={self.optimizer_model}
-            optimizer_api_base_url={self.optimizer_api_base_url}
             reasoning={self.reasoning}
         )
         """

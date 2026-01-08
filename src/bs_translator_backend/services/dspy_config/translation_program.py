@@ -1,16 +1,5 @@
-# pyrefly: ignore-errors
-
-import os
-from collections.abc import AsyncIterator, Callable, Iterable
-
 import dspy
-from backend_common.dspy_common import (
-    AbstractDspyModule,
-    SwissGermanStreamListener,
-    edit_distance_metric,
-)
-from backend_common.logger import get_logger
-from dspy.streaming.messages import StreamResponse
+from dcc_backend_common.logger import get_logger
 
 from bs_translator_backend.utils.app_config import AppConfig
 
@@ -32,22 +21,11 @@ class TranslationSignature(dspy.Signature):
     )
 
 
-class TranslationModule(AbstractDspyModule):
-    def __init__(
-        self,
-        app_config: AppConfig,
-    ):
+class TranslationModule(dspy.Module):
+    def __init__(self):
         super().__init__()
         self.predict = dspy.Predict(TranslationSignature)
-        stream_listener = SwissGermanStreamListener(
-            signature_field_name="translated_text", allow_reuse=True
-        )
-        self.stream_predict: Callable[..., AsyncIterator[StreamResponse]] = dspy.streamify(
-            self.predict, stream_listeners=[stream_listener]
-        )
         self.logger = get_logger(__name__)
-        if os.path.exists(app_config.translation_module_path):
-            self.load(app_config.translation_module_path)
 
     def predict_with_context(
         self,
@@ -57,23 +35,5 @@ class TranslationModule(AbstractDspyModule):
             **kwargs,
         )
 
-    async def stream_with_context(self, **kwargs: object) -> AsyncIterator[StreamResponse]:
-        # Runs inside the adapter-aware dspy.context created by AbstractDspyModule.stream
-        output = self.stream_predict(**kwargs)
-        async for chunk in output:
-            yield chunk
-
-
-def optimize_translation_module(
-    base_program: TranslationModule,
-    trainset: Iterable[dspy.Example],
-    valset: Iterable[dspy.Example],
-    reflection_lm: dspy.LM,
-    task_lm: dspy.LM,
-) -> TranslationModule:
-    """Optimize the translation module using MIPRO with edit distance metric."""
-    optimizer = dspy.MIPROv2(
-        prompt_model=reflection_lm, task_model=task_lm, metric=edit_distance_metric
-    )
-    optimized = optimizer.compile(base_program, trainset=list(trainset), valset=list(valset))
-    return optimized
+    async def stream_with_context(self, **kwargs: object) -> None:
+        pass

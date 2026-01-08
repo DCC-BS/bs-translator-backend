@@ -1,11 +1,3 @@
-"""
-Translation Configuration Models
-
-This module defines the configuration classes for translation parameters,
-allowing users to customize translation behavior including target language,
-tone, domain specialization, custom glossaries, and additional context.
-"""
-
 from pydantic import BaseModel, Field
 
 from bs_translator_backend.models.language import Language, LanguageOrAuto
@@ -34,10 +26,27 @@ class TranslationConfig(BaseModel):
     source_language: LanguageOrAuto | None = Field(
         default=None, description="Source language (auto-detected if None)"
     )
-    domain: str | None = Field(default=None, description="Domain or subject area for translation")
-    tone: str | None = Field(default=None, description="Tone or style for translation")
-    glossary: str | None = Field(default=None, description="Custom glossary or terminology")
-    context: str | None = Field(default=None, description="Additional context for translation")
-    reasoning: bool = Field(
-        default=False, description="Enable LLM reasoning; when false, disable with /no_think hint"
+    domain: str = Field(default="General", description="Domain or subject area for translation")
+    tone: str = Field(
+        default="Keep the tone of the source text", description="Tone or style for translation"
+    )
+    glossary: str = Field(default="No glossary", description="Custom glossary or terminology")
+    context: str = Field(default="No context", description="Additional context for translation")
+
+
+class TranslationInput(BaseModel):
+    """
+    Input model for translation requests.
+
+    This model combines the text to be translated with optional
+    configuration parameters to customize the translation behavior.
+
+    Attributes:
+        text: The text content to be translated
+        config: Translation configuration parameters (optional)
+    """
+
+    text: str = Field(..., description="Text to be translated")
+    config: TranslationConfig = Field(
+        default=TranslationConfig(), description="Optional translation configuration parameters"
     )

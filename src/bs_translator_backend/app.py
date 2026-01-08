@@ -1,7 +1,7 @@
 import dspy
-from backend_common.fastapi_health_probes import health_probe_router
-from backend_common.fastapi_health_probes.router import ServiceDependency
-from backend_common.logger import get_logger, init_logger
+from dcc_backend_common.fastapi_health_probes import health_probe_router
+from dcc_backend_common.fastapi_health_probes.router import ServiceDependency
+from dcc_backend_common.logger import get_logger, init_logger
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 from starlette.middleware.cors import CORSMiddleware
