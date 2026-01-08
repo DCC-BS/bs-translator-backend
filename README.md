@@ -20,7 +20,7 @@ BS Translator Backend is a powerful Python FastAPI service that provides advance
 - **Framework**: [FastAPI](https://fastapi.tiangolo.com/) with Python 3.13
 - **Package Manager**: [uv](https://github.com/astral-sh/uv)
 - **Dependency Injection**: Dependency-Injector
-- **LLM Orchestration**: [DSPy](https://github.com/stanfordnlp/dspy) with OpenAI/vLLM-compatible endpoints
+- **LLM Orchestration**: [Pydantic AI](https://ai.pydantic.dev/) with OpenAI/vLLM-compatible endpoints
 - **Document Processing**: Docling for document conversion
 - **Containerization**: Docker and Docker Compose
 
@@ -46,12 +46,8 @@ HUGGING_FACE_CACHE_DIR=~/.cache/huggingface
 LLM_API_PORT=8001
 OPENAI_API_BASE_URL=http://localhost:${LLM_API_PORT}/v1
 OPENAI_API_KEY='none'
+LLM_REASONING=False
 LLM_MODEL='ISTA-DASLab/gemma-3-27b-it-GPTQ-4b-128g'
-
-# Optional DSPy optimizer (used by optimize_llm.py)
-OPTIMIZER_API_KEY=
-OPTIMIZER_MODEL=
-OPTIMIZER_API_BASE_URL=
 
 # Client Configuration
 CLIENT_PORT=3000
@@ -63,7 +59,7 @@ DOCLING_URL='http://localhost:8004/v1'
 WHISPER_URL='http://localhost:50001/v1'
 ```
 
-> **Note:** The optimizer values are only needed when running DSPy optimization scripts. The `HF_AUTH_TOKEN` is required for Hugging Face API access and model downloads; you can create a token [here](https://huggingface.co/settings/tokens).
+> **Note:** The `HF_AUTH_TOKEN` is required for Hugging Face API access and model downloads; you can create a token [here](https://huggingface.co/settings/tokens). Set `LLM_REASONING=True` to enable extended reasoning/thinking in the LLM responses.
 
 ### Install Dependencies
 
@@ -155,14 +151,6 @@ make test
 uv run python -m pytest --doctest-modules
 ```
 
-### DSPy Translation Optimization
-
-- Prepare sample and custom datasets (writes CSVs under `src/bs_translator_backend/data/`):
-  - `uv run prepare-dataset`
-- Optimize the translation module with DSPy (requires `OPTIMIZER_*` env vars):
-  - `uv run optimize-translation`
-  - Outputs an updated `translation_module.pkl` used by the API for streaming translations.
-
 ## API Endpoints
 
 ### Translation
@@ -191,31 +179,28 @@ The translation service supports the following customizable parameters:
 src/bs_translator_backend/
 ├── app.py                      # FastAPI application entry point
 ├── container.py                # Dependency injection container
+├── agents/                     # AI agent definitions
+│   └── translation_agent.py   # Pydantic AI translation agent
 ├── data/                       # Dataset files
 ├── models/                     # Data models and schemas
-│   ├── app_config.py          # Application configuration
 │   ├── conversion_result.py   # Document conversion models
-│   ├── language.py           # Language definitions
-│   ├── translation_config.py  # Translation configuration
-│   └── translation_input.py   # Translation input models
+│   ├── language.py            # Language definitions
+│   └── translation.py         # Translation configuration and input models
 ├── routers/                    # API endpoint definitions
 │   ├── convert_route.py       # Document conversion endpoints
 │   └── translation_route.py   # Translation endpoints
-├── scripts/                    # Offline utilities
-│   ├── optimize_llm.py        # DSPy optimization entry point
-│   └── prepare_dataset.py     # Dataset preparation helper
 ├── services/                   # Business logic services
 │   ├── document_conversion_service.py  # Document processing
-│   ├── dspy_config/           # DSPy translation program and assets
+│   ├── dspy_config/           # Translation program and assets
 │   │   ├── dataset_loader.py  # Dataset loading and sampling
-│   │   ├── translation_program.py # DSPy translation module
-│   │   ├── translation_module.pkl # Optimized module artifact
-│   │   └── small_translation_module.pkl # Lightweight module
+│   │   ├── translation_program.py # Translation module
+│   │   └── translation_module.pkl # Module artifact
 │   ├── text_chunk_service.py  # Text chunking utilities
 │   ├── transcription_service.py # Whisper transcription integration
 │   ├── translation_service.py # Translation logic
 │   └── usage_tracking_service.py # Request tracking
 └── utils/                      # Utility functions and helpers
+    ├── app_config.py          # Application configuration
     ├── cancelation.py         # Cancellation utilities
     ├── image_overlay.py       # Image overlay helpers
     └── language_detection.py  # Language detection utilities

@@ -1,8 +1,6 @@
 import dspy
 from dcc_backend_common.logger import get_logger
 
-from bs_translator_backend.utils.app_config import AppConfig
-
 
 class TranslationSignature(dspy.Signature):
     """source_text, source_language, target_language, domain, tone, glossary, context -> translated_text"""
