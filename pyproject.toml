@@ -51,11 +51,6 @@ dev = [
 ]
 
 
-[project.scripts]
-optimize-translation = "bs_translator_backend.scripts.optimize_llm:main"
-prepare-dataset = "bs_translator_backend.scripts.prepare_dataset:main"
-
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
