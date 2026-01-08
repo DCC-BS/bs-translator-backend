@@ -48,18 +48,7 @@ def create_router(
         translation_input: TranslationInput,
         x_client_id: Annotated[str | None, Header()],
     ) -> StreamingResponse:
-        """
-        Translate the provided text using the specified configuration.
-
-        Returns an SSE stream of text tokens. Each event contains a text delta.
-        The stream ends with a [DONE] event.
-
-        Args:
-            translation_input: Translation request containing text and configuration
-
-        Returns:
-            StreamingResponse: SSE stream with translated text tokens
-        """
+        """Translate the provided text using the specified configuration."""
         usage_tracking_service.log_event(
             __name__,
             translate_text.__name__,

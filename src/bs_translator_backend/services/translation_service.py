@@ -68,18 +68,7 @@ Text to translate:
     async def translate_text(
         self, text: str, config: TranslationConfig
     ) -> AsyncGenerator[str, None]:
-        """
-        Translate text with streaming response (plain text chunks).
-
-        Handles chunking for large texts and streams translation results.
-
-        Args:
-            text: The text to translate
-            config: Translation configuration parameters
-
-        Yields:
-            Translated text chunks as plain strings
-        """
+        """Translate text and stream the result."""
         if not text.strip() or len(text.strip()) == 1:
             yield text
             return
@@ -88,7 +77,6 @@ Text to translate:
         accumulated_context = ""
 
         for text_chunk in text_chunks:
-            # Update context with previous translations for consistency
             chunk_config = TranslationConfig(
                 target_language=config.target_language,
                 source_language=config.source_language,

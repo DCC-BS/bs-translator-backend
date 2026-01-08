@@ -191,10 +191,6 @@ src/bs_translator_backend/
 │   └── translation_route.py   # Translation endpoints
 ├── services/                   # Business logic services
 │   ├── document_conversion_service.py  # Document processing
-│   ├── dspy_config/           # Translation program and assets
-│   │   ├── dataset_loader.py  # Dataset loading and sampling
-│   │   ├── translation_program.py # Translation module
-│   │   └── translation_module.pkl # Module artifact
 │   ├── text_chunk_service.py  # Text chunking utilities
 │   ├── transcription_service.py # Whisper transcription integration
 │   ├── translation_service.py # Translation logic
