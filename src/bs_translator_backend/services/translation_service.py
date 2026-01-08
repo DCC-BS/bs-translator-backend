@@ -20,6 +20,7 @@ from bs_translator_backend.models.translation import TranslationConfig
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService
 from bs_translator_backend.services.text_chunk_service import TextChunkService
 from bs_translator_backend.utils.app_config import AppConfig
+from bs_translator_backend.utils.language_detection import detect_language
 
 
 @final
@@ -72,6 +73,9 @@ Text to translate:
         if not text.strip() or len(text.strip()) == 1:
             yield text
             return
+
+        if not config.source_language or config.source_language == DetectLanguage.AUTO:
+            config.source_language: Language = detect_language(text).value_or(Language.DE)
 
         text_chunks = self.text_chunk_service.chunk_text(text)
         accumulated_context = ""

@@ -12,10 +12,6 @@ class AppConfig(AbstractAppConfig):
         default=False,
         description="Enable LLM reasoning; when false, disable with /no_think hint",
     )
-    translation_module_path: str = Field(
-        default="src/bs_translator_backend/services/dspy_config/translation_module.pkl",
-        description="The path to the translation module",
-    )
     client_url: str = Field(description="The URL for the client application")
     docling_url: str = Field(description="The URL for the Docling service")
     hmac_secret: str = Field(description="The secret key for HMAC authentication")
@@ -55,7 +51,6 @@ class AppConfig(AbstractAppConfig):
             hmac_secret={log_secret(self.hmac_secret)},
             docling_url={self.docling_url}
             whisper_url={self.whisper_url}
-            translation_module_path={self.translation_module_path}
             reasoning={self.reasoning}
         )
         """

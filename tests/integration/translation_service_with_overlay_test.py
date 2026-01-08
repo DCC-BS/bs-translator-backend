@@ -1,9 +1,8 @@
-from typing import cast
-
 import pytest
 from fastapi import UploadFile
 from starlette.datastructures import Headers
 
+from bs_translator_backend.models import TranslationConfig
 from bs_translator_backend.models.docling_response import (
     BoundingBox,
     DoclingDocument,
@@ -11,9 +10,7 @@ from bs_translator_backend.models.docling_response import (
     TextItem,
 )
 from bs_translator_backend.models.language import Language
-from bs_translator_backend.models.translation_config import TranslationConfig
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService
-from bs_translator_backend.services.dspy_config.translation_program import TranslationModule
 from bs_translator_backend.services.text_chunk_service import TextChunkService
 from bs_translator_backend.services.translation_service import TranslationService
 from bs_translator_backend.utils.app_config import AppConfig
@@ -65,9 +62,8 @@ def translation_service(app_config: AppConfig) -> TranslationService:
         return service
 
     text_chunk_service = TextChunkService()
-    translation_module = cast(TranslationModule, StubTranslationModule())
 
-    return TranslationService(translation_module, text_chunk_service, conversion_service_factory)
+    return TranslationService(app_config, text_chunk_service, conversion_service_factory)
 
 
 @pytest.mark.asyncio

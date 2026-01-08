@@ -1,4 +1,3 @@
-import dspy
 from dcc_backend_common.fastapi_health_probes import health_probe_router
 from dcc_backend_common.fastapi_health_probes.router import ServiceDependency
 from dcc_backend_common.logger import get_logger, init_logger
@@ -147,15 +146,6 @@ def create_app() -> FastAPI:
     logger.info(f"AppConfig loaded: {config}")
 
     _register_health_routes(app=app, config=config)
-
-    dspy.configure(
-        lm=dspy.LM(
-            model=config.llm_model,
-            api_key=config.openai_api_key,
-            api_base=config.openai_api_base_url,
-        ),
-    )
-    dspy.configure_cache(enable_disk_cache=False, enable_memory_cache=False)
 
     _configure_cors(app=app, client_url=config.client_url, logger=logger)
     _register_routes(app=app, logger=logger)
