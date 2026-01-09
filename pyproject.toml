@@ -19,7 +19,6 @@ classifiers = [
 ]
 dependencies = [
     "dependency-injector>=4.48.1",
-    "dspy>=3.0.4",
     "fastapi[standard]>=0.116.1",
     "httpx>=0.28.1",
     "langdetect>=1.0.9",
@@ -29,7 +28,8 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "returns>=0.26.0",
     "structlog>=25.1.0",
-    "backend-common[fastapi]",
+    "pydantic-ai>=1.40.0",
+    "dcc-backend-common>=0.0.1",
 ]
 
 [project.urls]
@@ -49,11 +49,6 @@ dev = [
     "pytest-asyncio>=1.1.0",
     "ty>=0.0.8",
 ]
-
-
-[project.scripts]
-optimize-translation = "bs_translator_backend.scripts.optimize_llm:main"
-prepare-dataset = "bs_translator_backend.scripts.prepare_dataset:main"
 
 
 [build-system]
@@ -163,6 +158,3 @@ allow_untyped_globals = false
 # Package configuration
 namespace_packages = true
 explicit_package_bases = true
-
-[tool.uv.sources]
-backend-common = { git = "https://github.com/DCC-BS/backend-common" }

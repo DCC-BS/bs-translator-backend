@@ -1,7 +1,7 @@
 import hashlib
 import hmac
 
-from backend_common.logger import get_logger
+from dcc_backend_common.logger import get_logger
 
 from bs_translator_backend.utils.app_config import AppConfig
 

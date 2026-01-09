@@ -10,8 +10,10 @@ from .docling_response import (
     ErrorItem,
 )
 from .language import DetectLanguage, Language, LanguageOrAuto
-from .translation_config import TranslationConfig
-from .translation_input import TranslationInput
+from .translation import (
+    TranslationConfig,
+    TranslationInput,
+)
 
 __all__ = [
     "ConversionOutput",

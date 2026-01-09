@@ -1,12 +1,11 @@
 import re
-from collections.abc import Mapping
 from io import BytesIO
 from pathlib import Path
 from types import TracebackType
 from typing import Any, BinaryIO, Self, final
 
 import httpx
-from backend_common.logger import get_logger
+from dcc_backend_common.logger import get_logger
 from fastapi import status
 from starlette.datastructures import UploadFile
 
@@ -182,7 +181,7 @@ class DocumentConversionService:
             if content_type is None:
                 content_type: str = get_mimetype(Path(filename))
 
-        assert isinstance(content_type, str)
+        assert isinstance(content_type, str)  # noqa: S101
         validate_mimetype(content_type, logger_context={"content_type": content_type})
 
         files = {"files": (filename, BytesIO(content), content_type)}
@@ -246,7 +245,7 @@ class DocumentConversionService:
             filename: str = filename or "uploaded_document"
             if content_type is None:
                 content_type: str = get_mimetype(Path(filename))
-        assert isinstance(content_type, str)
+        assert isinstance(content_type, str)  # noqa: S101
         validate_mimetype(content_type, logger_context={"content_type": content_type})
 
         files = {"files": (filename, BytesIO(content), content_type)}

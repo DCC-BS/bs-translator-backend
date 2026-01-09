@@ -1,15 +1,14 @@
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
-from backend_common.logger import get_logger
+from dcc_backend_common.logger import get_logger
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Header, Request, UploadFile
 from fastapi.params import Form
 from fastapi.responses import StreamingResponse
 
 from bs_translator_backend.container import Container
-from bs_translator_backend.models.translation_config import TranslationConfig
-from bs_translator_backend.models.translation_input import TranslationInput
+from bs_translator_backend.models.translation import TranslationConfig, TranslationInput
 from bs_translator_backend.services.translation_service import TranslationService
 from bs_translator_backend.services.usage_tracking_service import UsageTrackingService
 
@@ -49,15 +48,7 @@ def create_router(
         translation_input: TranslationInput,
         x_client_id: Annotated[str | None, Header()],
     ) -> StreamingResponse:
-        """
-        Translate the provided text using the specified configuration.
-
-        Args:
-            translation_input: Translation request containing text and configuration
-
-        Returns:
-            StreamingResponse: Streaming response with translated text
-        """
+        """Translate the provided text using the specified configuration."""
         usage_tracking_service.log_event(
             __name__,
             translate_text.__name__,
@@ -69,7 +60,7 @@ def create_router(
             tone=translation_input.config.tone,
         )
 
-        async def generate_translation() -> AsyncGenerator[str, None]:
+        async def generate_stream() -> AsyncGenerator[str, None]:
             async for chunk in translation_service.translate_text(
                 translation_input.text, translation_input.config
             ):
@@ -78,7 +69,15 @@ def create_router(
                     break
                 yield chunk
 
-        return StreamingResponse(generate_translation(), media_type="text/plain")
+        return StreamingResponse(
+            generate_stream(),
+            media_type="text/plain; charset=utf-8",
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "X-Accel-Buffering": "no",
+                "Connection": "keep-alive",
+            },
+        )
 
     @router.post("/image", summary="Translate text in image")
     async def translate_image(
@@ -130,7 +129,15 @@ def create_router(
 
                 yield translation.model_dump_json()
 
-        return StreamingResponse(generate_translation(), media_type="text/plain")
+        return StreamingResponse(
+            generate_translation(),
+            media_type="text/plain; charset=utf-8",
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "X-Accel-Buffering": "no",
+                "Connection": "keep-alive",
+            },
+        )
 
     logger.info("Translation router configured")
     return router

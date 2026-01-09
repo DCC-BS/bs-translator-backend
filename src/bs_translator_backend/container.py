@@ -1,7 +1,6 @@
 from dependency_injector import containers, providers
 
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService
-from bs_translator_backend.services.dspy_config.translation_program import TranslationModule
 from bs_translator_backend.services.text_chunk_service import TextChunkService
 from bs_translator_backend.services.transcription_service import TranscriptionService
 from bs_translator_backend.services.translation_service import TranslationService
@@ -11,11 +10,6 @@ from bs_translator_backend.utils.app_config import AppConfig
 
 class Container(containers.DeclarativeContainer):
     app_config = providers.Object(AppConfig.from_env())
-
-    translation_module: providers.Singleton[TranslationModule] = providers.Singleton(
-        TranslationModule,
-        app_config=app_config,
-    )
 
     text_chunk_service: providers.Singleton[TextChunkService] = providers.Singleton(
         TextChunkService,
@@ -28,7 +22,7 @@ class Container(containers.DeclarativeContainer):
 
     translation_service: providers.Singleton[TranslationService] = providers.Singleton(
         TranslationService,
-        translation_module=translation_module,
+        app_config=app_config,
         text_chunk_service=text_chunk_service,
         conversion_service_factory=document_conversion_service.provider,
     )
