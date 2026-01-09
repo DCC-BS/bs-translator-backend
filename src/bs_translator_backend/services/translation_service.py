@@ -92,7 +92,11 @@ Text to translate:
                 else config.context,
             )
 
-            user_message = self._create_user_message(text_chunk, chunk_config)
+            user_message = self._create_user_message(
+                text=text_chunk,
+                translation_config=chunk_config,
+                reasoning=self.app_config.reasoning,
+            )
             chunk_translation = ""
 
             async with self.translation_agent.run_stream(user_message) as stream:
