@@ -1,5 +1,5 @@
 # Stage 1: Builder
-FROM python:3.14-alpine AS builder
+FROM python:3.13-alpine AS builder
 COPY --from=ghcr.io/astral-sh/uv:0.9.14 /uv /uvx /bin/
 
 ENV UV_COMPILE_BYTECODE=1
@@ -8,7 +8,9 @@ ENV UV_LINK_MODE=copy
 WORKDIR /app
 
 # Install build toolchain (gcc, musl-dev, make, etc.)
-RUN apk add --no-cache build-base git
+# protobuf-dev includes standard proto files (google/protobuf/*.proto)
+# rust/cargo are required for temporalio's Rust components
+RUN apk add --no-cache build-base git protoc protobuf-dev rust cargo
 
 # Copy dependency files
 COPY pyproject.toml uv.lock ./
@@ -28,7 +30,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev
 
 # Stage 2: Runtime
-FROM python:3.14-alpine
+FROM python:3.13-alpine
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
