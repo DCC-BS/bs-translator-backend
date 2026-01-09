@@ -1,4 +1,6 @@
 import pytest
+from pydantic_ai import ModelRequest, ModelResponse
+from pydantic_ai.messages import TextPart
 
 from bs_translator_backend.agents.translation_agent import (
     keep_recent_message,
@@ -26,18 +28,22 @@ class TestTransformToSwissgermanStyle:
 class TestKeepRecentMessage:
     @pytest.mark.asyncio
     async def test_keeps_single_message(self):
-        messages = ["msg1"]
+        msg1 = ModelRequest.user_text_prompt("msg1")
+        messages = [msg1]
         result = await keep_recent_message(messages)
-        assert result == ["msg1"]
+        assert result == [msg1]
 
     @pytest.mark.asyncio
     async def test_keeps_only_last_message_when_multiple(self):
-        messages = ["msg1", "msg2", "msg3"]
+        msg1 = ModelRequest.user_text_prompt("msg1")
+        msg2 = ModelResponse(parts=[TextPart(content="msg2")])
+        msg3 = ModelRequest.user_text_prompt("msg3")
+        messages = [msg1, msg2, msg3]
         result = await keep_recent_message(messages)
-        assert result == ["msg3"]
+        assert result == [msg3]
 
     @pytest.mark.asyncio
     async def test_returns_empty_list_for_empty_input(self):
-        messages = []
+        messages: list[ModelRequest | ModelResponse] = []
         result = await keep_recent_message(messages)
         assert result == []
