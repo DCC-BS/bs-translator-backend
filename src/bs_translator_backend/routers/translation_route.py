@@ -8,7 +8,12 @@ from fastapi.params import Form
 from fastapi.responses import StreamingResponse
 
 from bs_translator_backend.container import Container
-from bs_translator_backend.models.translation import TranslationConfig, TranslationInput
+from bs_translator_backend.models.translation import (
+    DetectLanguageInput,
+    DetectLanguageOutput,
+    TranslationConfig,
+    TranslationInput,
+)
 from bs_translator_backend.services.translation_service import TranslationService
 from bs_translator_backend.services.usage_tracking_service import UsageTrackingService
 
@@ -16,7 +21,7 @@ logger = get_logger(__name__)
 
 
 @inject
-def create_router(
+def create_router(  # noqa: C901
     translation_service: TranslationService = Provide[Container.translation_service],
     usage_tracking_service: UsageTrackingService = Provide[Container.usage_tracking_service],
 ) -> APIRouter:
@@ -138,6 +143,14 @@ def create_router(
                 "Connection": "keep-alive",
             },
         )
+
+    @router.post("/detect-language", summary="Detect language")
+    async def detect_language(
+        request: Request,
+        detect_language_input: DetectLanguageInput,
+    ) -> DetectLanguageOutput:
+        """Detect the language of the text"""
+        return await translation_service.detect_language(detect_language_input)
 
     logger.info("Translation router configured")
     return router
