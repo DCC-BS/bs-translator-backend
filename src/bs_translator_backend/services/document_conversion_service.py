@@ -16,6 +16,7 @@ from bs_translator_backend.models.docling_response import (
     DocumentResponse,
 )
 from bs_translator_backend.models.error_codes import (
+    DOCLING_TIMEOUT,
     INVALID_MIME_TYPE,
     NO_DOCUMENT,
     UNEXPECTED_ERROR,
@@ -95,7 +96,7 @@ def extract_docling_document(response: str, logger_context: dict[str, Any]) -> D
 class DocumentConversionService:
     def __init__(self, config: AppConfig) -> None:
         self.config = config
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self.client = httpx.AsyncClient(timeout=300.0)
 
     async def aclose(self) -> None:
         """Close the underlying HTTP client if it is still open."""
@@ -125,11 +126,26 @@ class DocumentConversionService:
         files: dict[str, tuple[str, BinaryIO, str]],
         options: dict[str, str | list[str] | bool],
     ) -> httpx.Response:
-        response = await self.client.post(
-            self.config.docling_url + "/convert/file",
-            files=files,
-            data=options,
-        )
+        try:
+            response = await self.client.post(
+                self.config.docling_url + "/convert/file",
+                files=files,
+                data=options,
+            )
+        except httpx.TimeoutException as e:
+            logger.exception("Docling API timeout")
+            raise ApiErrorException({
+                "errorId": DOCLING_TIMEOUT,
+                "status": status.HTTP_504_GATEWAY_TIMEOUT,
+                "debugMessage": "Docling API request timed out",
+            }) from e
+        except httpx.RequestError as e:
+            logger.exception("Docling API request error")
+            raise ApiErrorException({
+                "errorId": UNEXPECTED_ERROR,
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "debugMessage": f"Docling API request error: {e!s}",
+            }) from e
 
         if 200 <= response.status_code < 300:
             return response

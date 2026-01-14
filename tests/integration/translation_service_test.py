@@ -67,7 +67,9 @@ async def test_image_translate(translation_service: TranslationService) -> None:
         headers = Headers({"content-type": "image/png"})
 
         upload_file = UploadFile(file=file, filename="ReportView.png", headers=headers)
-        translate_config = TranslationConfig(source_language=Language.DE)
+        translate_config = TranslationConfig(
+            source_language=Language.DE, target_language=Language.EN
+        )
 
         translation_entries = []
 

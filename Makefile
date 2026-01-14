@@ -16,7 +16,7 @@ check: ## Run code quality tools.
 .PHONY: test
 test: ## Test the code with pytest
 	@echo "🚀 Testing code: Running pytest"
-	@uv run python -m pytest --doctest-modules
+	@uv run --env-file .env python -m pytest --doctest-modules
 
 .PHONY: docker up
 docker up: ## Build and run the Docker container

@@ -141,7 +141,7 @@ docker run --rm --env-file .env -p 8000:8000 bs-translator-backend
 
 ## Testing & Development Tools
 
-Run tests with pytest:
+Run tests with pytest (requires a `.env` file):
 
 ```bash
 # Run tests
@@ -157,6 +157,7 @@ uv run python -m pytest --doctest-modules
 
 - **GET `/translation/languages`**: Get list of supported languages
 - **POST `/translation/text`**: Translate text with customizable parameters
+- **POST `/translation/detect-language`**: Detect language of a given text with confidence score
 
 ### Document Conversion
 

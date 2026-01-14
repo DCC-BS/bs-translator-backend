@@ -16,7 +16,11 @@ from fastapi import UploadFile
 from bs_translator_backend.agents.translation_agent import create_translation_agent
 from bs_translator_backend.models.conversion_result import BBox, ConversionImageTextEntry
 from bs_translator_backend.models.language import DetectLanguage, Language, get_language_name
-from bs_translator_backend.models.translation import TranslationConfig
+from bs_translator_backend.models.translation import (
+    DetectLanguageInput,
+    DetectLanguageOutput,
+    TranslationConfig,
+)
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService
 from bs_translator_backend.services.text_chunk_service import TextChunkService
 from bs_translator_backend.utils.app_config import AppConfig
@@ -75,7 +79,14 @@ Text to translate:
             return
 
         if not config.source_language or config.source_language == DetectLanguage.AUTO:
-            config.source_language: Language = detect_language(text).value_or(Language.DE)
+            detection_result = detect_language(text)
+            config.source_language: Language = detection_result.map(
+                lambda result: result.language
+            ).value_or(Language.DE)
+
+        if config.source_language == config.target_language:
+            yield text
+            return
 
         text_chunks = self.text_chunk_service.chunk_text(text)
         accumulated_context = ""
@@ -134,6 +145,17 @@ Text to translate:
             yield ConversionImageTextEntry(
                 original=content, translated=translated, bbox=BBox(**bbox.model_dump())
             )
+
+    async def detect_language(
+        self, detect_language_input: DetectLanguageInput
+    ) -> DetectLanguageOutput:
+        """Detect the language of the text"""
+        if not detect_language_input.text.strip() or len(detect_language_input.text.strip()) < 10:
+            return DetectLanguageOutput(language=DetectLanguage.AUTO, confidence=0.0)
+
+        return detect_language(detect_language_input.text).value_or(
+            DetectLanguageOutput(language=DetectLanguage.AUTO, confidence=0.0)
+        )
 
     def get_supported_languages(self) -> list[str]:
         """Returns a list of supported languages for translation"""

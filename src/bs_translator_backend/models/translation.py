@@ -3,6 +3,15 @@ from pydantic import BaseModel, Field
 from bs_translator_backend.models.language import Language, LanguageOrAuto
 
 
+class DetectLanguageInput(BaseModel):
+    text: str = Field(description="Text to detect language for")
+
+
+class DetectLanguageOutput(BaseModel):
+    language: LanguageOrAuto = Field(description="Detected language")
+    confidence: float = Field(description="Confidence score for the detected language")
+
+
 class TranslationConfig(BaseModel):
     target_language: Language = Field(
         default=Language.DE, description="Target language for translation"
