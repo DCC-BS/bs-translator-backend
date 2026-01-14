@@ -1,0 +1,43 @@
+publiccodeYmlVersion: 0.5.0
+name: BS-Übersetzer Backend
+url: https://github.com/DCC-BS/bs-translator-backend
+softwareVersion: 0.2.8
+releaseDate: 2025-08-21
+platforms:
+  - web
+developmentStatus: beta
+softwareType: standalone/backend
+organisation:
+  name: DCC Data Competence Center - Statistisches Amt Kanton Basel-Stadt
+description:
+  en:
+    localisedName: BS Translator
+    shortDescription: "BS Translator is a modern web application for advanced text
+      translation using LLMs with file processing capabilities. "
+    longDescription: BS Translator is a modern web application for advanced text
+      translation with file processing capabilities. Built with Nuxt.js and
+      TypeScript, it provides intelligent translation services with customizable
+      tone, domain-specific terminology, and support for multiple file formats.
+      This repository contains only the frontend code; the backend is written in
+      Python FastAPI.
+    documentation: https://dcc-bs.github.io/documentation/
+    apiDocumentation: https://dcc-bs.github.io/documentation/
+    features:
+      - Translation
+      - LLM
+      - PWA
+    screenshots:
+      - https://github.com/DCC-BS/bs-translator-frontend/blob/main/_imgs/BsTranslator.png
+legal:
+  license: MIT-0
+maintenance:
+  type: internal
+  contacts:
+    - name: Data Competence Center
+      email: dcc@bs.ch
+      affiliation: Statistisches Amt Kanton Basel-Stadt
+localisation:
+  localisationReady: true
+  availableLanguages:
+    - en
+    - de-CH
