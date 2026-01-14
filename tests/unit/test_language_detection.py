@@ -9,7 +9,7 @@ def test_detect_language_english():
     result = detect_language(text)
     assert isinstance(result, Success)
     output = result.unwrap()
-    assert output.language == Language.EN
+    assert output.language == Language.EN_US
     assert output.confidence > 0.1
 
 

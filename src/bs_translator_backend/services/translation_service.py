@@ -150,12 +150,12 @@ Text to translate:
         self, detect_language_input: DetectLanguageInput
     ) -> DetectLanguageOutput:
         """Detect the language of the text"""
-        text = detect_language_input.text
-        default_output = DetectLanguageOutput(language=DetectLanguage.AUTO, confidence=0.0)
-        if not text.strip() or len(text.strip()) < 10:
-            return default_output
+        if not detect_language_input.text.strip() or len(detect_language_input.text.strip()) < 10:
+            return DetectLanguageOutput(language=DetectLanguage.AUTO, confidence=0.0)
 
-        return detect_language(text).value_or(default_output)
+        return detect_language(detect_language_input.text).value_or(
+            DetectLanguageOutput(language=DetectLanguage.AUTO, confidence=0.0)
+        )
 
     def get_supported_languages(self) -> list[str]:
         """Returns a list of supported languages for translation"""

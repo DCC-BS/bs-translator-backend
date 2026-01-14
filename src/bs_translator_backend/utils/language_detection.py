@@ -81,16 +81,10 @@ def detect_language(text: str) -> ResultE[DetectLanguageOutput]:
 @safe
 def detect_language_str(text: str) -> tuple[str, float]:
     """Detect the language of the given text.
+
     If no language is detected, return the default language (German).
-
-    Args:
-        text: The text to analyze for language detection
-
-    Returns:
-        The detected language code as a string and the confidence score
     """
-    truncated_text = text[:1000]
-    result = detect(truncated_text, k=1)
-    if len(result) == 0:
+    result = detect(text[:1000], k=1)
+    if not result:
         return "de", 0.0
     return str(result[0]["lang"]), float(result[0]["score"])
