@@ -15,7 +15,7 @@ _FT_LANGUAGE_MAPPING: dict[str, Language] = {
     "da": Language.DA,
     "de": Language.DE,
     "el": Language.EL,
-    "en": Language.EN,
+    "en": Language.EN_US,
     "es": Language.ES,
     "et": Language.ET,
     "fa": Language.FA,
