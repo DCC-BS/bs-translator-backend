@@ -5,6 +5,14 @@
 
 BS Translator Backend is a powerful Python FastAPI service that provides advanced text translation and document conversion capabilities. This backend service enables high-quality translation of text and documents using state-of-the-art AI models with customizable translation parameters.
 
+---
+
+<p align="center">
+  <a href="https://dcc-bs.github.io/documentation/">DCC Documentation & Guidelines</a> | <a href="https://www.bs.ch/daten/databs/dcc">DCC Website</a>
+</p>
+
+---
+
 ## Features
 
 - **Text Translation**: High-quality text translation with customizable parameters
