@@ -1,9 +1,9 @@
 # BS Translator Backend
 
+BS Translator Backend is a powerful Python FastAPI service that provides advanced text translation and document conversion capabilities. This backend service enables high-quality translation of text and documents using state-of-the-art AI models with customizable translation parameters.
+
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License](https://img.shields.io/github/license/DCC-BS/bs-translator-backend)](https://img.shields.io/github/license/DCC-BS/bs-translator-backend)
-
-BS Translator Backend is a powerful Python FastAPI service that provides advanced text translation and document conversion capabilities. This backend service enables high-quality translation of text and documents using state-of-the-art AI models with customizable translation parameters.
 
 ---
 
