@@ -2,7 +2,7 @@ import re
 from io import BytesIO
 from pathlib import Path
 from types import TracebackType
-from typing import Any, BinaryIO, Self, final
+from typing import Any, Self, final
 
 import httpx
 from dcc_backend_common.logger import get_logger
@@ -123,7 +123,7 @@ class DocumentConversionService:
 
     async def fetch_docling_file_convert(
         self,
-        files: dict[str, tuple[str, BinaryIO, str]],
+        files: dict[str, tuple[str, BytesIO, str]],
         options: dict[str, str | list[str] | bool],
     ) -> httpx.Response:
         try:
@@ -198,6 +198,7 @@ class DocumentConversionService:
                 content_type: str = get_mimetype(Path(filename))
 
         assert isinstance(content_type, str)  # noqa: S101
+        assert isinstance(filename, str)  # noqa: S101
         validate_mimetype(content_type, logger_context={"content_type": content_type})
 
         files = {"files": (filename, BytesIO(content), content_type)}
@@ -262,6 +263,7 @@ class DocumentConversionService:
             if content_type is None:
                 content_type: str = get_mimetype(Path(filename))
         assert isinstance(content_type, str)  # noqa: S101
+        assert isinstance(filename, str)  # noqa: S101
         validate_mimetype(content_type, logger_context={"content_type": content_type})
 
         files = {"files": (filename, BytesIO(content), content_type)}
