@@ -119,3 +119,7 @@ line-ending = "auto"
 # Group imports by type (standard library, third-party, first-party).
 combine-as-imports = true
 force-wrap-aliases = true
+
+[tool.uv]
+exclude-newer = "1 week"
+exclude-newer-package = { dcc-backend-common = "P1D" }
