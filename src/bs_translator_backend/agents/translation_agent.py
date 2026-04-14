@@ -15,16 +15,21 @@ def transform_to_swissgerman_style(text: str) -> str:
 
 
 def create_translation_agent(app_config: AppConfig) -> Agent:
-    client = AsyncOpenAI(
-        max_retries=3, base_url=app_config.openai_api_base_url, api_key=app_config.openai_api_key
-    )
+    client = AsyncOpenAI(max_retries=3, base_url=app_config.llm_url, api_key=app_config.llm_api_key)
     model = OpenAIChatModel(
-        model_name=app_config.llm_model, provider=OpenAIProvider(openai_client=client)
+        model_name=app_config.llm_model,
+        provider=OpenAIProvider(openai_client=client),
+        settings={
+            "extra_body": {
+                "chat_template_kwargs": { "enable_thinking": False}
+            }
+        }
     )
     translation_agent: Agent = Agent(
         model=model,
         output_type=TextOutput(transform_to_swissgerman_style),
         history_processors=[keep_recent_message],
+
     )
 
     @translation_agent.instructions
