@@ -129,6 +129,7 @@ class DocumentConversionService:
         try:
             response = await self.client.post(
                 self.config.docling_url + "/convert/file",
+                headers={"Authorization": f"Bearer {self.config.docling_api_key}"},
                 files=files,
                 data=options,
             )
