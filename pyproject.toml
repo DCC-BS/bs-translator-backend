@@ -28,7 +28,7 @@ dependencies = [
     "returns>=0.26.0",
     "structlog>=25.1.0",
     "pydantic-ai>=1.40.0",
-    "dcc-backend-common>=0.0.1",
+    "dcc-backend-common>=0.1.9",
     "fast-langdetect>=1.0.0",
 ]
 
@@ -122,4 +122,4 @@ force-wrap-aliases = true
 
 [tool.uv]
 exclude-newer = "1 week"
-exclude-newer-package = { dcc-backend-common = "P1D" }
+exclude-newer-package = { dcc-backend-common = "P0D" }
