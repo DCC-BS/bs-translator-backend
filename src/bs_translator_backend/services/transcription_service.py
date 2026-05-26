@@ -7,7 +7,7 @@ from bs_translator_backend.models.language import DetectLanguage, LanguageOrAuto
 from bs_translator_backend.utils.app_config import AppConfig
 
 
-def transform_language_code_for_whisper(lang_code: str):
+def transform_language_code_for_whisper(lang_code: str) -> str:
     if lang_code == "en-gb" or lang_code == "en-us":
         return "en"
     else:

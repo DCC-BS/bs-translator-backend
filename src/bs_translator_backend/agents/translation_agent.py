@@ -27,7 +27,6 @@ def create_translation_agent(app_config: AppConfig) -> Agent[None, str]:
         output_type=TextOutput(transform_to_swissgerman_style),
         capabilities=[ProcessHistory(keep_recent_message)],
     )
-    translation_agent.history_processors = [keep_recent_message]
 
     @translation_agent.instructions
     def get_instructions() -> str:
