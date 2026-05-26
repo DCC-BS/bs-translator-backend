@@ -121,5 +121,5 @@ combine-as-imports = true
 force-wrap-aliases = true
 
 [tool.uv]
-exclude-newer = "1 week"
+exclude-newer = "7 days"
 exclude-newer-package = { dcc-backend-common = "P1D" }
