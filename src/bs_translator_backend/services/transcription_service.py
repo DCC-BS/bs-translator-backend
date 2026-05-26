@@ -8,10 +8,11 @@ from bs_translator_backend.utils.app_config import AppConfig
 
 
 def transform_language_code_for_whisper(lang_code: str):
-    if(lang_code == "en-gb" or lang_code == "en-us"):
+    if lang_code == "en-gb" or lang_code == "en-us":
         return "en"
     else:
         return lang_code
+
 
 class TranscriptionService:
     def __init__(self, config: AppConfig) -> None:
@@ -23,11 +24,9 @@ class TranscriptionService:
     ) -> AsyncGenerator[str, None]:
         lang = None if language == DetectLanguage.AUTO else language.value
 
-        data = {
-            "response_format": "text"
-        }
+        data = {"response_format": "text"}
 
-        if(lang is not None):
+        if lang is not None:
             data["language"] = transform_language_code_for_whisper(lang.strip())
 
         async with self.client.stream(

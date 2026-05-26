@@ -31,8 +31,8 @@ docker-down: ## Stop and remove the Docker container
 
 .PHONY: docker-logs
 docker-logs: ## Run docker compose logs
-	@docker compose logs
- 
+	@./scripts/run-varlock.sh run -- docker compose logs
+
 .PHONY: run
 run: ## Run the application
 	@echo "🚀 Running the application"

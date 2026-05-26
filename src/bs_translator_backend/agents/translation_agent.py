@@ -19,17 +19,12 @@ def create_translation_agent(app_config: AppConfig) -> Agent:
     model = OpenAIChatModel(
         model_name=app_config.llm_model,
         provider=OpenAIProvider(openai_client=client),
-        settings={
-            "extra_body": {
-                "chat_template_kwargs": { "enable_thinking": False}
-            }
-        }
+        settings={"extra_body": {"chat_template_kwargs": {"enable_thinking": False}}},
     )
     translation_agent: Agent = Agent(
         model=model,
         output_type=TextOutput(transform_to_swissgerman_style),
         history_processors=[keep_recent_message],
-
     )
 
     @translation_agent.instructions
