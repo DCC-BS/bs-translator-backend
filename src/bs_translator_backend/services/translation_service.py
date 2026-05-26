@@ -82,7 +82,6 @@ Text to translate:
             detection_result = detect_language(text)
             detected = detection_result.map(lambda result: result.language).value_or(Language.DE)
             if isinstance(detected, DetectLanguage):
-                detected = Language.DE
                 config.source_language = detection_result.map(
                     lambda result: result.language
                 ).value_or(Language.DE)
