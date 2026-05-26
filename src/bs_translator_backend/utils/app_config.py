@@ -14,6 +14,8 @@ class AppConfig(AbstractAppConfig):
     )
     client_url: str = Field(description="The URL for the client application")
     docling_url: str = Field(description="The URL for the Docling service")
+    docling_api_key: str = Field(description="The API key for docling")
+
     hmac_secret: str = Field(description="The secret key for HMAC authentication")
 
     whisper_url: str = Field(description="The URL for the Whisper API")
@@ -27,6 +29,7 @@ class AppConfig(AbstractAppConfig):
         reasoning = reasoning_raw in {"1", "true", "yes", "on"}
         client_url: str = get_env_or_throw("CLIENT_URL")
         docling_url: str = get_env_or_throw("DOCLING_URL")
+        docling_api_key: str = get_env_or_throw("DOCLING_API_KEY")
         hmac_secret: str = get_env_or_throw("HMAC_SECRET")
         whisper_url: str = get_env_or_throw("WHISPER_URL")
 
@@ -37,6 +40,7 @@ class AppConfig(AbstractAppConfig):
             reasoning=reasoning,
             client_url=client_url,
             docling_url=docling_url,
+            docling_api_key=docling_api_key,
             hmac_secret=hmac_secret,
             whisper_url=whisper_url,
         )
