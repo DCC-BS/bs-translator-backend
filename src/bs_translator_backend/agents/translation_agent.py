@@ -1,5 +1,6 @@
 from openai import AsyncOpenAI
 from pydantic_ai import Agent, ModelMessage, TextOutput
+from pydantic_ai.capabilities import ProcessHistory
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
@@ -21,9 +22,10 @@ def create_translation_agent(app_config: AppConfig) -> Agent[None, str]:
         provider=OpenAIProvider(openai_client=client),
         settings={"extra_body": {"chat_template_kwargs": {"enable_thinking": False}}},
     )
-    translation_agent: Agent[None, str] = Agent(
+    translation_agent = Agent(
         model=model,
         output_type=TextOutput(transform_to_swissgerman_style),
+        capabilities=[ProcessHistory(keep_recent_message)],
     )
     translation_agent.history_processors = [keep_recent_message]
 
