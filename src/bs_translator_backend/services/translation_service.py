@@ -80,9 +80,9 @@ Text to translate:
 
         if not config.source_language or config.source_language == DetectLanguage.AUTO:
             detection_result = detect_language(text)
-            config.source_language: Language = detection_result.map(
-                lambda result: result.language
-            ).value_or(Language.DE)
+            config.source_language = detection_result.map(lambda result: result.language).value_or(
+                Language.DE
+            )
 
         if config.source_language == config.target_language:
             yield text
