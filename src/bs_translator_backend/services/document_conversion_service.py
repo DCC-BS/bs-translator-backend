@@ -131,6 +131,7 @@ class DocumentConversionService:
                 self.config.docling_url + "/convert/file",
                 files=files,
                 data=options,
+                headers={"Authorization": self.config.openai_api_key},
             )
         except httpx.TimeoutException as e:
             logger.exception("Docling API timeout")
