@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-from starlette.datastructures import Headers, UploadFile
+from starlette.datastructures import UploadFile
 
 from bs_translator_backend.models.error_codes import (
     DOCLING_TASK_FAILED,
@@ -69,7 +69,10 @@ def service(config: AppConfig) -> DocumentConversionService:
 def _responses(*bodies: dict | None, status: int = 200) -> AsyncMock:
     """Build an AsyncMock for client.request returning one Response per call."""
     return AsyncMock(
-        side_effect=[httpx.Response(status, json=b) if b is not None else httpx.Response(status) for b in bodies]
+        side_effect=[
+            httpx.Response(status, json=b) if b is not None else httpx.Response(status)
+            for b in bodies
+        ]
     )
 
 
@@ -81,16 +84,20 @@ def _responses(*bodies: dict | None, status: int = 200) -> AsyncMock:
 class TestGetMimetype:
     def test_known_extensions(self) -> None:
         assert get_mimetype(pytest.importorskip("pathlib").Path("doc.pdf")) == "application/pdf"
-        assert get_mimetype(pytest.importorskip("pathlib").Path("doc.docx")).startswith("application/vnd")
+        assert get_mimetype(pytest.importorskip("pathlib").Path("doc.docx")).startswith(
+            "application/vnd"
+        )
         assert get_mimetype(pytest.importorskip("pathlib").Path("img.png")) == "image/png"
         assert get_mimetype(pytest.importorskip("pathlib").Path("data.csv")) == "text/csv"
 
     def test_unknown_extension_returns_invalid(self) -> None:
         from pathlib import Path
+
         assert get_mimetype(Path("file.xyz")) == "invalid"
 
     def test_case_insensitive(self) -> None:
         from pathlib import Path
+
         assert get_mimetype(Path("DOC.PDF")) == "application/pdf"
 
 
@@ -120,22 +127,30 @@ class TestValidateMimetype:
 
 
 class TestResolveFile:
-    def test_bytesio_uses_provided_filename_and_content_type(self, service: DocumentConversionService) -> None:
+    def test_bytesio_uses_provided_filename_and_content_type(
+        self, service: DocumentConversionService
+    ) -> None:
         data = b"hello"
         content, filename, ct = service._resolve_file(BytesIO(data), "doc.pdf", "application/pdf")
         assert content == data
         assert filename == "doc.pdf"
         assert ct == "application/pdf"
 
-    def test_bytesio_detects_mimetype_from_filename(self, service: DocumentConversionService) -> None:
+    def test_bytesio_detects_mimetype_from_filename(
+        self, service: DocumentConversionService
+    ) -> None:
         _, _, ct = service._resolve_file(BytesIO(b"x"), "report.pdf", None)
         assert ct == "application/pdf"
 
-    def test_bytesio_falls_back_to_uploaded_document_name(self, service: DocumentConversionService) -> None:
+    def test_bytesio_falls_back_to_uploaded_document_name(
+        self, service: DocumentConversionService
+    ) -> None:
         _, filename, _ = service._resolve_file(BytesIO(b"x"), None, "text/plain")
         assert filename == "uploaded_document"
 
-    def test_upload_file_reads_content_and_filename(self, service: DocumentConversionService) -> None:
+    def test_upload_file_reads_content_and_filename(
+        self, service: DocumentConversionService
+    ) -> None:
         data = b"pdf content"
         mock_file = MagicMock()
         mock_file.file.read.return_value = data
@@ -146,7 +161,9 @@ class TestResolveFile:
         assert content == data
         assert filename == "upload.pdf"
 
-    def test_upload_file_param_filename_overrides_upload_filename(self, service: DocumentConversionService) -> None:
+    def test_upload_file_param_filename_overrides_upload_filename(
+        self, service: DocumentConversionService
+    ) -> None:
         mock_file = MagicMock()
         mock_file.file.read.return_value = b""
         mock_file.filename = "original.pdf"
@@ -155,7 +172,9 @@ class TestResolveFile:
         _, filename, _ = service._resolve_file(mock_file, "override.pdf", "application/pdf")
         assert filename == "override.pdf"
 
-    def test_unknown_extension_raises_invalid_mime(self, service: DocumentConversionService) -> None:
+    def test_unknown_extension_raises_invalid_mime(
+        self, service: DocumentConversionService
+    ) -> None:
         with pytest.raises(ApiErrorException) as exc_info:
             service._resolve_file(BytesIO(b"x"), "file.xyz", None)
         assert exc_info.value.args[0]["errorId"] == INVALID_MIME_TYPE
@@ -183,7 +202,9 @@ class TestMakeRequest:
         assert exc_info.value.args[0]["errorId"] == DOCLING_TIMEOUT
 
     @pytest.mark.asyncio
-    async def test_request_error_raises_unexpected(self, service: DocumentConversionService) -> None:
+    async def test_request_error_raises_unexpected(
+        self, service: DocumentConversionService
+    ) -> None:
         service.client.request = AsyncMock(
             side_effect=httpx.ConnectError("refused", request=_DUMMY_REQUEST)
         )
@@ -242,23 +263,39 @@ class TestPollTask:
     @pytest.mark.asyncio
     async def test_immediate_success(self, service: DocumentConversionService) -> None:
         service.client.request = _responses(_POLL_SUCCESS)
-        with patch("bs_translator_backend.services.document_conversion_service.time.monotonic", side_effect=[0.0, 1.0]):
+        with patch(
+            "bs_translator_backend.services.document_conversion_service.time.monotonic",
+            side_effect=[0.0, 1.0],
+        ):
             await service._poll_task(_TASK_ID)  # no exception = success
 
     @pytest.mark.asyncio
-    async def test_polls_multiple_times_before_success(self, service: DocumentConversionService) -> None:
+    async def test_polls_multiple_times_before_success(
+        self, service: DocumentConversionService
+    ) -> None:
         service.client.request = _responses(_POLL_PENDING, _POLL_PENDING, _POLL_SUCCESS)
         with (
-            patch("bs_translator_backend.services.document_conversion_service.time.monotonic", side_effect=[0.0, 1.0, 2.0, 3.0]),
-            patch("bs_translator_backend.services.document_conversion_service.asyncio.sleep", new_callable=AsyncMock),
+            patch(
+                "bs_translator_backend.services.document_conversion_service.time.monotonic",
+                side_effect=[0.0, 1.0, 2.0, 3.0],
+            ),
+            patch(
+                "bs_translator_backend.services.document_conversion_service.asyncio.sleep",
+                new_callable=AsyncMock,
+            ),
         ):
             await service._poll_task(_TASK_ID)
         assert service.client.request.call_count == 3
 
     @pytest.mark.asyncio
-    async def test_failure_status_raises_docling_task_failed(self, service: DocumentConversionService) -> None:
+    async def test_failure_status_raises_docling_task_failed(
+        self, service: DocumentConversionService
+    ) -> None:
         service.client.request = _responses(_POLL_FAILURE)
-        with patch("bs_translator_backend.services.document_conversion_service.time.monotonic", side_effect=[0.0, 1.0]):
+        with patch(
+            "bs_translator_backend.services.document_conversion_service.time.monotonic",
+            side_effect=[0.0, 1.0],
+        ):
             with pytest.raises(ApiErrorException) as exc_info:
                 await service._poll_task(_TASK_ID)
         assert exc_info.value.args[0]["errorId"] == DOCLING_TASK_FAILED
@@ -267,16 +304,24 @@ class TestPollTask:
     async def test_timeout_raises_docling_timeout(self, service: DocumentConversionService) -> None:
         # monotonic: deadline = 0.0 + 600 = 600.0; first check returns 700.0 → expired
         service.client.request = AsyncMock()
-        with patch("bs_translator_backend.services.document_conversion_service.time.monotonic", side_effect=[0.0, 700.0]):
+        with patch(
+            "bs_translator_backend.services.document_conversion_service.time.monotonic",
+            side_effect=[0.0, 700.0],
+        ):
             with pytest.raises(ApiErrorException) as exc_info:
                 await service._poll_task(_TASK_ID)
         assert exc_info.value.args[0]["errorId"] == DOCLING_TIMEOUT
         service.client.request.assert_not_called()  # no poll issued before timeout
 
     @pytest.mark.asyncio
-    async def test_unknown_status_raises_unexpected(self, service: DocumentConversionService) -> None:
+    async def test_unknown_status_raises_unexpected(
+        self, service: DocumentConversionService
+    ) -> None:
         service.client.request = _responses({"task_status": "UNKNOWN_STATE"})
-        with patch("bs_translator_backend.services.document_conversion_service.time.monotonic", side_effect=[0.0, 1.0]):
+        with patch(
+            "bs_translator_backend.services.document_conversion_service.time.monotonic",
+            side_effect=[0.0, 1.0],
+        ):
             with pytest.raises(ApiErrorException) as exc_info:
                 await service._poll_task(_TASK_ID)
         assert exc_info.value.args[0]["errorId"] == UNEXPECTED_ERROR
@@ -284,17 +329,25 @@ class TestPollTask:
     @pytest.mark.asyncio
     async def test_non_json_poll_response_raises(self, service: DocumentConversionService) -> None:
         service.client.request = AsyncMock(return_value=httpx.Response(200, text="not-json"))
-        with patch("bs_translator_backend.services.document_conversion_service.time.monotonic", side_effect=[0.0, 1.0]):
+        with patch(
+            "bs_translator_backend.services.document_conversion_service.time.monotonic",
+            side_effect=[0.0, 1.0],
+        ):
             with pytest.raises(ApiErrorException) as exc_info:
                 await service._poll_task(_TASK_ID)
         assert exc_info.value.args[0]["errorId"] == UNEXPECTED_ERROR
 
     @pytest.mark.asyncio
-    async def test_network_error_during_poll_raises(self, service: DocumentConversionService) -> None:
+    async def test_network_error_during_poll_raises(
+        self, service: DocumentConversionService
+    ) -> None:
         service.client.request = AsyncMock(
             side_effect=httpx.ConnectError("gone", request=_DUMMY_REQUEST)
         )
-        with patch("bs_translator_backend.services.document_conversion_service.time.monotonic", side_effect=[0.0, 1.0]):
+        with patch(
+            "bs_translator_backend.services.document_conversion_service.time.monotonic",
+            side_effect=[0.0, 1.0],
+        ):
             with pytest.raises(ApiErrorException) as exc_info:
                 await service._poll_task(_TASK_ID)
         assert exc_info.value.args[0]["errorId"] == UNEXPECTED_ERROR
@@ -310,8 +363,14 @@ class TestFetchDoclingFileConvert:
     async def test_happy_path_submit_poll_fetch(self, service: DocumentConversionService) -> None:
         service.client.request = _responses(_SUBMIT_OK, _POLL_PENDING, _POLL_SUCCESS, _RESULT_BODY)
         with (
-            patch("bs_translator_backend.services.document_conversion_service.time.monotonic", side_effect=[0.0, 1.0, 2.0, 3.0]),
-            patch("bs_translator_backend.services.document_conversion_service.asyncio.sleep", new_callable=AsyncMock),
+            patch(
+                "bs_translator_backend.services.document_conversion_service.time.monotonic",
+                side_effect=[0.0, 1.0, 2.0, 3.0],
+            ),
+            patch(
+                "bs_translator_backend.services.document_conversion_service.asyncio.sleep",
+                new_callable=AsyncMock,
+            ),
         ):
             response = await service.fetch_docling_file_convert({}, {})
 
@@ -336,7 +395,9 @@ class TestConvert:
         assert result.images == {}
 
     @pytest.mark.asyncio
-    async def test_extracts_base64_images_from_markdown(self, service: DocumentConversionService) -> None:
+    async def test_extracts_base64_images_from_markdown(
+        self, service: DocumentConversionService
+    ) -> None:
         b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
         result_with_image = {
             **_RESULT_BODY,
@@ -353,7 +414,9 @@ class TestConvert:
         assert "image0.png" in result.markdown
 
     @pytest.mark.asyncio
-    async def test_invalid_mimetype_raises_before_request(self, service: DocumentConversionService) -> None:
+    async def test_invalid_mimetype_raises_before_request(
+        self, service: DocumentConversionService
+    ) -> None:
         service.fetch_docling_file_convert = AsyncMock()
         with pytest.raises(ApiErrorException) as exc_info:
             await service.convert(BytesIO(b"data"), DetectLanguage.AUTO, filename="file.xyz")
@@ -372,11 +435,15 @@ class TestConvertToDocling:
         service.fetch_docling_file_convert = AsyncMock(
             return_value=httpx.Response(200, json=_RESULT_BODY)
         )
-        doc = await service.convert_to_docling(BytesIO(b"data"), DetectLanguage.AUTO, filename="file.pdf")
+        doc = await service.convert_to_docling(
+            BytesIO(b"data"), DetectLanguage.AUTO, filename="file.pdf"
+        )
         assert doc.name == "test_doc"
 
     @pytest.mark.asyncio
-    async def test_auto_language_uses_multilingual_ocr(self, service: DocumentConversionService) -> None:
+    async def test_auto_language_uses_multilingual_ocr(
+        self, service: DocumentConversionService
+    ) -> None:
         service.fetch_docling_file_convert = AsyncMock(
             return_value=httpx.Response(200, json=_RESULT_BODY)
         )
@@ -386,7 +453,9 @@ class TestConvertToDocling:
         assert set(options["ocr_lang"]) == {"de", "en", "fr", "it"}
 
     @pytest.mark.asyncio
-    async def test_english_language_uses_single_ocr_lang(self, service: DocumentConversionService) -> None:
+    async def test_english_language_uses_single_ocr_lang(
+        self, service: DocumentConversionService
+    ) -> None:
         service.fetch_docling_file_convert = AsyncMock(
             return_value=httpx.Response(200, json=_RESULT_BODY)
         )
