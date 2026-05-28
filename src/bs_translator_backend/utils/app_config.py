@@ -1,7 +1,7 @@
 import os
 
 from dcc_backend_common.config import AbstractAppConfig, get_env_or_throw, log_secret
-from pydantic import Field
+from pydantic import Field, field_validator
 
 
 class AppConfig(AbstractAppConfig):
@@ -17,6 +17,11 @@ class AppConfig(AbstractAppConfig):
     hmac_secret: str = Field(description="The secret key for HMAC authentication")
 
     whisper_url: str = Field(description="The URL for the Whisper API")
+
+    @field_validator("openai_api_base_url", "client_url", "docling_url", "whisper_url", mode="after")
+    @classmethod
+    def strip_trailing_slash(cls, v: str) -> str:
+        return v.rstrip("/")
 
     @classmethod
     def from_env(cls) -> "AppConfig":
