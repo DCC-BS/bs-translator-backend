@@ -61,25 +61,18 @@ def get_mimetype(path_source: Path) -> str:
 
 
 def validate_mimetype(mimetype: str, logger_context: dict[str, Any]) -> None:
-    if len(mimetype) == 0:
-        logger.error("MIME type is empty", extra=logger_context)
-
+    if not mimetype or mimetype == "invalid":
+        logger.error(f"Invalid MIME type: {mimetype!r}", extra=logger_context)
         raise ApiErrorException({
             "errorId": INVALID_MIME_TYPE,
             "status": status.HTTP_400_BAD_REQUEST,
-            "debugMessage": "MIME type is empty",
-        })
-
-    if mimetype == "invalid":
-        logger.error("Invalid MIME type", extra=logger_context)
-        raise ApiErrorException({
-            "errorId": INVALID_MIME_TYPE,
-            "status": status.HTTP_400_BAD_REQUEST,
-            "debugMessage": "Invalid MIME type",
+            "debugMessage": f"Invalid MIME type: {mimetype!r}",
         })
 
 
-def extract_docling_document(response: str, logger_context: dict[str, Any]) -> DocumentResponse:
+def extract_docling_document(
+    response: dict[str, Any], logger_context: dict[str, Any]
+) -> DocumentResponse:
     docling_response = DoclingResponse.model_validate(response)
     if docling_response.document.json_content is None:
         logger.error(
@@ -169,6 +162,30 @@ class DocumentConversionService:
                 "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "debugMessage": f"{context} response is not valid JSON",
             }) from e
+
+    def _resolve_file(
+        self,
+        file: UploadFile | BytesIO,
+        filename: str | None,
+        content_type: str | None,
+    ) -> tuple[bytes, str, str]:
+        """Read file content and resolve filename and MIME type.
+
+        Returns (content, filename, content_type). Raises ApiErrorException
+        for unsupported MIME types.
+        """
+        if isinstance(file, UploadFile):
+            content = file.file.read()
+            filename = filename or file.filename or "uploaded_document"
+        else:
+            content = file.read()
+            filename = filename or "uploaded_document"
+
+        if content_type is None:
+            content_type = get_mimetype(Path(filename))
+
+        validate_mimetype(content_type, logger_context={"content_type": content_type})
+        return content, filename, content_type
 
     async def _submit_async_convert(
         self,
@@ -277,22 +294,7 @@ class DocumentConversionService:
         elif source_lang.value.startswith("en"):
             languages = ["en"]
 
-        # Handle both UploadFile and BytesIO cases
-        if isinstance(file, UploadFile):
-            content = file.file.read()
-            filename = filename or file.filename or "uploaded_document"
-            if content_type is None:
-                content_type = get_mimetype(Path(filename))
-        else:
-            # It's a BytesIO object
-            content = file.read()
-            filename: str = filename or "uploaded_document"
-            if content_type is None:
-                content_type: str = get_mimetype(Path(filename))
-
-        assert isinstance(content_type, str)  # noqa: S101
-        assert isinstance(filename, str)  # noqa: S101
-        validate_mimetype(content_type, logger_context={"content_type": content_type})
+        content, filename, content_type = self._resolve_file(file, filename, content_type)
 
         files = {"files": (filename, BytesIO(content), content_type)}
         options: dict[str, str | list[str] | bool] = {
@@ -306,25 +308,15 @@ class DocumentConversionService:
             "pdf_backend": "pypdfium2",
         }
 
-        logger_context = {"options": options, "content_type": content_type}
-
         response = await self.fetch_docling_file_convert(files, options)
-        json_response = response.json()
+        document = extract_docling_document(
+            self._parse_json(response, "convert_to_docling result"),
+            logger_context={"options": options, "content_type": content_type},
+        )
 
-        document = extract_docling_document(json_response, logger_context)
-
-        if document.json_content is None:
-            logger.error("Docling response does not contain a document", extra=logger_context)
-
-            raise ApiErrorException({
-                "errorId": NO_DOCUMENT,
-                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "debugMessage": "Docling response does not contain a document",
-            })
-
-        # Ensure we return a DoclingDocument instance
         if isinstance(document.json_content, dict):
             return DoclingDocument.model_validate(document.json_content)
+        assert document.json_content is not None  # noqa: S101  # guaranteed by extract_docling_document
         return document.json_content
 
     async def convert(
@@ -340,24 +332,7 @@ class DocumentConversionService:
             languages = ["de", "en", "fr", "it"]
 
         logger.info(f"type of file: {type(file)}")
-
-        # Handle both UploadFile and BytesIO cases
-        if isinstance(file, UploadFile):
-            content = file.file.read()
-            filename = file.filename or "uploaded_document"
-            logger.info(f"Filename from UploadFile: {filename}")
-            if content_type is None:
-                content_type: str = get_mimetype(Path(filename))
-        else:
-            logger.info("File is not an UploadFile instance")
-            # It's a BytesIO object
-            content = file.read()
-            filename: str = filename or "uploaded_document"
-            if content_type is None:
-                content_type: str = get_mimetype(Path(filename))
-        assert isinstance(content_type, str)  # noqa: S101
-        assert isinstance(filename, str)  # noqa: S101
-        validate_mimetype(content_type, logger_context={"content_type": content_type})
+        content, filename, content_type = self._resolve_file(file, filename, content_type)
 
         files = {"files": (filename, BytesIO(content), content_type)}
         options: dict[str, str | list[str] | bool] = {
@@ -372,27 +347,20 @@ class DocumentConversionService:
         }
 
         response = await self.fetch_docling_file_convert(files, options)
-        json_response = response.json()
         docling_response = extract_docling_document(
-            json_response, logger_context={"options": options, "content_type": content_type}
+            self._parse_json(response, "convert result"),
+            logger_context={"options": options, "content_type": content_type},
         )
 
-        # Extract markdown content from the docling response
         markdown = docling_response.md_content or ""
-
         images: dict[int, Base64EncodedImage] = {}
 
-        # Extract base64 images directly from markdown
         base64_pattern = r"!\[.*?\]\(data:image/[^;]+;base64,([^)]+)\)"
-        matches = re.findall(base64_pattern, markdown)
-
-        for idx, base64_data in enumerate(matches):
+        for idx, base64_data in enumerate(re.findall(base64_pattern, markdown)):
             try:
                 images[idx] = base64_data
-                # Replace base64 data in markdown with file path
                 old_pattern = f"data:image/[^;]+;base64,{re.escape(base64_data)}"
-                new_path = f"image{idx}.png"
-                markdown = re.sub(old_pattern, new_path, markdown)
+                markdown = re.sub(old_pattern, f"image{idx}.png", markdown)
             except Exception:
                 logger.exception(f"Error decoding base64 image {idx}")
 
