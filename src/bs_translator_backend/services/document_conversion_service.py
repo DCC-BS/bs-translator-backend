@@ -127,7 +127,9 @@ class DocumentConversionService:
 
         await self.aclose()
 
-    async def _make_request(self, method: str, url: str, context: str, **kwargs: Any) -> httpx.Response:
+    async def _make_request(
+        self, method: str, url: str, context: str, **kwargs: Any
+    ) -> httpx.Response:
         """Execute an HTTP request, raising ApiErrorException on network errors or non-2xx status."""
         try:
             response = await self.client.request(method, url, **kwargs)
