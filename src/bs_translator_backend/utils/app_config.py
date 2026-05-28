@@ -31,6 +31,13 @@ class AppConfig(AbstractAppConfig):
     def strip_trailing_slash(cls, v: str) -> str:
         return v.rstrip("/")
 
+    @field_validator("docling_poll_interval", "docling_task_timeout", mode="after")
+    @classmethod
+    def must_be_positive(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError(f"must be positive, got {v}")
+        return v
+
     @classmethod
     def from_env(cls) -> "AppConfig":
         openai_api_base_url: str = get_env_or_throw("OPENAI_API_BASE_URL")

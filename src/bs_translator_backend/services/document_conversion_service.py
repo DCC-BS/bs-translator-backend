@@ -129,6 +129,11 @@ class DocumentConversionService:
         files: dict[str, tuple[str, BytesIO, str]],
         options: dict[str, str | list[str] | bool],
     ) -> str:
+        """POST /convert/file/async and return the task_id string.
+
+        Raises ApiErrorException on timeout, request error, non-2xx response,
+        or a response body that is not valid JSON / missing the task_id field.
+        """
         try:
             response = await self.client.post(
                 self.config.docling_url + "/convert/file/async",
@@ -159,11 +164,39 @@ class DocumentConversionService:
                 "debugMessage": "Unexpected error on async submit",
             })
 
-        task_id: str = response.json()["task_id"]
+        try:
+            body = response.json()
+        except ValueError as e:
+            logger.exception("Docling async submit returned non-JSON body")
+            raise ApiErrorException({
+                "errorId": UNEXPECTED_ERROR,
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "debugMessage": "Docling async submit response is not valid JSON",
+            }) from e
+
+        task_id = body.get("task_id")
+        if not isinstance(task_id, str) or not task_id:
+            logger.error(f"Docling async submit response missing task_id: {body}")
+            raise ApiErrorException({
+                "errorId": UNEXPECTED_ERROR,
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "debugMessage": f"Docling async submit response missing task_id: {body}",
+            })
+
         logger.info(f"Docling async task submitted: {task_id}")
         return task_id
 
+    _POLL_TERMINAL_STATES = frozenset({"success", "failure"})
+    _POLL_VALID_STATES = frozenset({"pending", "started", "success", "failure"})
+
     async def _poll_task(self, task_id: str) -> None:
+        """Poll /status/poll/{task_id} until the task succeeds or fails.
+
+        Raises ApiErrorException on timeout (DOCLING_TIMEOUT), task failure
+        (DOCLING_TASK_FAILED), network errors, non-JSON responses, or an
+        unrecognised task_status value. Note: docling-serve has no cancel
+        endpoint, so on timeout the remote task keeps running.
+        """
         deadline = time.monotonic() + self.config.docling_task_timeout
         poll_url = self.config.docling_url + f"/status/poll/{task_id}"
 
@@ -200,8 +233,26 @@ class DocumentConversionService:
                     "debugMessage": f"Docling poll request error: {e!s}",
                 }) from e
 
-            task_status: str = poll_response.json().get("task_status", "")
+            try:
+                poll_body = poll_response.json()
+            except ValueError as e:
+                logger.exception(f"Docling poll returned non-JSON body for task {task_id}")
+                raise ApiErrorException({
+                    "errorId": UNEXPECTED_ERROR,
+                    "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "debugMessage": f"Docling poll response is not valid JSON for task {task_id}",
+                }) from e
+
+            task_status: str = poll_body.get("task_status", "")
             logger.info(f"Docling task {task_id} status: {task_status}")
+
+            if task_status not in self._POLL_VALID_STATES:
+                logger.error(f"Docling task {task_id} returned unexpected status: {task_status!r}")
+                raise ApiErrorException({
+                    "errorId": UNEXPECTED_ERROR,
+                    "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "debugMessage": f"Docling task {task_id} returned unexpected status: {task_status!r}",
+                })
 
             if task_status == "success":
                 return
@@ -215,6 +266,10 @@ class DocumentConversionService:
             await asyncio.sleep(self.config.docling_poll_interval)
 
     async def _fetch_result(self, task_id: str) -> httpx.Response:
+        """GET /result/{task_id} and return the raw response.
+
+        Raises ApiErrorException on timeout, request error, or non-2xx status.
+        """
         try:
             response = await self.client.get(
                 self.config.docling_url + f"/result/{task_id}",
