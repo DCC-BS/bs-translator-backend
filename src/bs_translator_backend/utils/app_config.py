@@ -14,13 +14,19 @@ class AppConfig(AbstractAppConfig):
     )
     client_url: str = Field(description="The URL for the client application")
     docling_url: str = Field(description="The URL for the Docling service")
-    docling_poll_interval: float = Field(default=2.0, description="Seconds between async task status polls")
-    docling_task_timeout: float = Field(default=600.0, description="Max seconds to wait for an async docling task")
+    docling_poll_interval: float = Field(
+        default=2.0, description="Seconds between async task status polls"
+    )
+    docling_task_timeout: float = Field(
+        default=600.0, description="Max seconds to wait for an async docling task"
+    )
     hmac_secret: str = Field(description="The secret key for HMAC authentication")
 
     whisper_url: str = Field(description="The URL for the Whisper API")
 
-    @field_validator("openai_api_base_url", "client_url", "docling_url", "whisper_url", mode="after")
+    @field_validator(
+        "openai_api_base_url", "client_url", "docling_url", "whisper_url", mode="after"
+    )
     @classmethod
     def strip_trailing_slash(cls, v: str) -> str:
         return v.rstrip("/")

@@ -242,7 +242,9 @@ class DocumentConversionService:
             error_text = response.text
             logger.error(f"Docling result error response: {error_text}")
         except UnicodeDecodeError:
-            logger.exception(f"Docling result contains binary data (status: {response.status_code})")
+            logger.exception(
+                f"Docling result contains binary data (status: {response.status_code})"
+            )
 
         raise ApiErrorException({
             "errorId": UNEXPECTED_ERROR,
