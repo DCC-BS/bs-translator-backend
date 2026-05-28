@@ -1,4 +1,6 @@
+import asyncio
 import re
+import time
 from io import BytesIO
 from pathlib import Path
 from types import TracebackType
@@ -16,6 +18,7 @@ from bs_translator_backend.models.docling_response import (
     DocumentResponse,
 )
 from bs_translator_backend.models.error_codes import (
+    DOCLING_TASK_FAILED,
     DOCLING_TIMEOUT,
     INVALID_MIME_TYPE,
     NO_DOCUMENT,
@@ -96,7 +99,7 @@ def extract_docling_document(response: str, logger_context: dict[str, Any]) -> D
 class DocumentConversionService:
     def __init__(self, config: AppConfig) -> None:
         self.config = config
-        self.client = httpx.AsyncClient(timeout=300.0)
+        self.client = httpx.AsyncClient(timeout=60.0)
 
     async def aclose(self) -> None:
         """Close the underlying HTTP client if it is still open."""
@@ -121,55 +124,140 @@ class DocumentConversionService:
 
         await self.aclose()
 
-    async def fetch_docling_file_convert(
+    async def _submit_async_convert(
         self,
         files: dict[str, tuple[str, BytesIO, str]],
         options: dict[str, str | list[str] | bool],
-    ) -> httpx.Response:
+    ) -> str:
         try:
             response = await self.client.post(
-                self.config.docling_url + "/convert/file",
+                self.config.docling_url + "/convert/file/async",
                 files=files,
                 data=options,
                 headers={"Authorization": self.config.openai_api_key},
             )
         except httpx.TimeoutException as e:
-            logger.exception("Docling API timeout")
+            logger.exception("Docling async submit timeout")
             raise ApiErrorException({
                 "errorId": DOCLING_TIMEOUT,
                 "status": status.HTTP_504_GATEWAY_TIMEOUT,
-                "debugMessage": "Docling API request timed out",
+                "debugMessage": "Docling async submit request timed out",
             }) from e
         except httpx.RequestError as e:
-            logger.exception("Docling API request error")
+            logger.exception("Docling async submit request error")
             raise ApiErrorException({
                 "errorId": UNEXPECTED_ERROR,
                 "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "debugMessage": f"Docling API request error: {e!s}",
+                "debugMessage": f"Docling async submit request error: {e!s}",
+            }) from e
+
+        if not (200 <= response.status_code < 300):
+            logger.error(f"Docling async submit error response: {response.text}")
+            raise ApiErrorException({
+                "errorId": UNEXPECTED_ERROR,
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "debugMessage": "Unexpected error on async submit",
+            })
+
+        task_id: str = response.json()["task_id"]
+        logger.info(f"Docling async task submitted: {task_id}")
+        return task_id
+
+    async def _poll_task(self, task_id: str) -> None:
+        deadline = time.monotonic() + self.config.docling_task_timeout
+        poll_url = self.config.docling_url + f"/status/poll/{task_id}"
+
+        while True:
+            if time.monotonic() >= deadline:
+                # docling-serve has no cancel endpoint; remote task continues running
+                logger.warning(
+                    f"Docling task {task_id} timed out after {self.config.docling_task_timeout}s. "
+                    "Remote task cannot be cancelled (no cancel API in docling-serve)."
+                )
+                raise ApiErrorException({
+                    "errorId": DOCLING_TIMEOUT,
+                    "status": status.HTTP_504_GATEWAY_TIMEOUT,
+                    "debugMessage": f"Docling task {task_id} did not complete within {self.config.docling_task_timeout}s",
+                })
+
+            try:
+                poll_response = await self.client.get(
+                    poll_url,
+                    headers={"Authorization": self.config.openai_api_key},
+                )
+            except httpx.TimeoutException as e:
+                logger.exception(f"Docling poll timeout for task {task_id}")
+                raise ApiErrorException({
+                    "errorId": DOCLING_TIMEOUT,
+                    "status": status.HTTP_504_GATEWAY_TIMEOUT,
+                    "debugMessage": f"Docling poll request timed out for task {task_id}",
+                }) from e
+            except httpx.RequestError as e:
+                logger.exception(f"Docling poll request error for task {task_id}")
+                raise ApiErrorException({
+                    "errorId": UNEXPECTED_ERROR,
+                    "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "debugMessage": f"Docling poll request error: {e!s}",
+                }) from e
+
+            task_status: str = poll_response.json().get("task_status", "")
+            logger.info(f"Docling task {task_id} status: {task_status}")
+
+            if task_status == "success":
+                return
+            if task_status == "failure":
+                raise ApiErrorException({
+                    "errorId": DOCLING_TASK_FAILED,
+                    "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "debugMessage": f"Docling task {task_id} failed",
+                })
+
+            await asyncio.sleep(self.config.docling_poll_interval)
+
+    async def _fetch_result(self, task_id: str) -> httpx.Response:
+        try:
+            response = await self.client.get(
+                self.config.docling_url + f"/result/{task_id}",
+                headers={"Authorization": self.config.openai_api_key},
+            )
+        except httpx.TimeoutException as e:
+            logger.exception(f"Docling result fetch timeout for task {task_id}")
+            raise ApiErrorException({
+                "errorId": DOCLING_TIMEOUT,
+                "status": status.HTTP_504_GATEWAY_TIMEOUT,
+                "debugMessage": f"Docling result fetch timed out for task {task_id}",
+            }) from e
+        except httpx.RequestError as e:
+            logger.exception(f"Docling result fetch request error for task {task_id}")
+            raise ApiErrorException({
+                "errorId": UNEXPECTED_ERROR,
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "debugMessage": f"Docling result fetch error: {e!s}",
             }) from e
 
         if 200 <= response.status_code < 300:
             return response
-        else:
-            # For error responses, safely handle potential binary content
-            try:
-                error_text = response.text
-                logger.error(f"Error response: {error_text}")
 
-                raise ApiErrorException({
-                    "errorId": UNEXPECTED_ERROR,
-                    "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    "debugMessage": "Unexpected error occurred",
-                })
-            except UnicodeDecodeError as e:
-                logger.exception(
-                    f"Error response contains binary data (status: {response.status_code})"
-                )
-                raise ApiErrorException({
-                    "errorId": UNEXPECTED_ERROR,
-                    "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    "debugMessage": "Binary data in error response",
-                }) from e
+        try:
+            error_text = response.text
+            logger.error(f"Docling result error response: {error_text}")
+        except UnicodeDecodeError:
+            logger.exception(f"Docling result contains binary data (status: {response.status_code})")
+
+        raise ApiErrorException({
+            "errorId": UNEXPECTED_ERROR,
+            "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "debugMessage": "Unexpected error fetching docling task result",
+        })
+
+    async def fetch_docling_file_convert(
+        self,
+        files: dict[str, tuple[str, BytesIO, str]],
+        options: dict[str, str | list[str] | bool],
+    ) -> httpx.Response:
+        task_id = await self._submit_async_convert(files, options)
+        await self._poll_task(task_id)
+        return await self._fetch_result(task_id)
 
     async def convert_to_docling(
         self,
