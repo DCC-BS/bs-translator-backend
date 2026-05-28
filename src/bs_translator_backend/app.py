@@ -34,7 +34,7 @@ def _register_health_routes(app: FastAPI, config: AppConfig) -> None:
     """
     whisper_base_url = config.whisper_url.rstrip("/v1")
     llm_base_url = config.openai_api_base_url.rstrip("/v1")
-    docling_base_url = config.docling_url
+    docling_base_url = config.docling_url.rstrip("/v1")
     service_dependencies: list[ServiceDependency] = [
         ServiceDependency(
             name="whisper",
