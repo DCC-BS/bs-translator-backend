@@ -94,7 +94,7 @@ class DocumentConversionService:
         self.config = config
         self.client = httpx.AsyncClient(
             timeout=60.0,
-            headers={"Authorization": config.openai_api_key},
+            headers={"Authorization": config.llm_api_key},
         )
 
     async def aclose(self) -> None:

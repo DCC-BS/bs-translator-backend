@@ -43,19 +43,21 @@ BS Translator Backend is a powerful Python FastAPI service that provides advance
 
 ### Environment Configuration
 
-Create a `.env` file in the project root with the required environment variables:
+This project uses [varlock](https://varlock.dev) for environment variable management. The `.env.schema` file defines all required variables with types, defaults, and validation.
+
+For local development, create a `.env` file in the project root:
 
 ```env
 # Hugging Face Configuration (optional)
-HF_AUTH_TOKEN=your_hugging_face_token_here
+HUGGING_FACE_HUB_TOKEN=your_hugging_face_token_here
 HUGGING_FACE_CACHE_DIR=~/.cache/huggingface
 
 # LLM Service Configuration (vLLM/OpenAI-compatible)
 LLM_API_PORT=8001
-OPENAI_API_BASE_URL=http://localhost:${LLM_API_PORT}/v1
-OPENAI_API_KEY='none'
-LLM_REASONING=False
-LLM_MODEL='ISTA-DASLab/gemma-3-27b-it-GPTQ-4b-128g'
+LLM_URL=http://localhost:${LLM_API_PORT}/v1
+LLM_API_KEY='none'
+LLM_REASONING=false
+LLM_MODEL='Qwen/Qwen3-32B-AWQ'
 
 # Client Configuration
 CLIENT_PORT=3000
@@ -67,7 +69,7 @@ DOCLING_URL='http://localhost:8004/v1'
 WHISPER_URL='http://localhost:50001/v1'
 ```
 
-> **Note:** The `HF_AUTH_TOKEN` is required for Hugging Face API access and model downloads; you can create a token [here](https://huggingface.co/settings/tokens). Set `LLM_REASONING=True` to enable extended reasoning/thinking in the LLM responses.
+> **Note:** The `HUGGING_FACE_HUB_TOKEN` is required for Hugging Face API access and model downloads; you can create a token [here](https://huggingface.co/settings/tokens). Set `LLM_REASONING=true` to enable extended reasoning/thinking in the LLM responses.
 
 ### Install Dependencies
 
