@@ -11,11 +11,11 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
+exclude-newer = "2026-05-26T13:51:22.880073641Z"
 exclude-newer-span = "P7D"
 
 [options.exclude-newer-package]
-dcc-backend-common = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
+dcc-backend-common = { timestamp = "2026-06-02T13:51:22.880080931Z", span = "PT0S" }
 
 [[package]]
 name = "ag-ui-protocol"
@@ -234,7 +234,7 @@ wheels = [
 
 [[package]]
 name = "bs-translator-backend"
-version = "0.2.12"
+version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "datasets" },
@@ -451,14 +451,14 @@ name = "cohere"
 version = "5.21.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "fastavro" },
-    { name = "httpx" },
-    { name = "pydantic" },
-    { name = "pydantic-core" },
-    { name = "requests" },
-    { name = "tokenizers" },
-    { name = "types-requests" },
-    { name = "typing-extensions" },
+    { name = "fastavro", marker = "sys_platform != 'emscripten'" },
+    { name = "httpx", marker = "sys_platform != 'emscripten'" },
+    { name = "pydantic", marker = "sys_platform != 'emscripten'" },
+    { name = "pydantic-core", marker = "sys_platform != 'emscripten'" },
+    { name = "requests", marker = "sys_platform != 'emscripten'" },
+    { name = "tokenizers", marker = "sys_platform != 'emscripten'" },
+    { name = "types-requests", marker = "sys_platform != 'emscripten'" },
+    { name = "typing-extensions", marker = "sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d2/75/4c346f6e2322e545f8452692304bd4eca15a2a0209ab9af6a0d1a7810b67/cohere-5.21.1.tar.gz", hash = "sha256:e5ade4423b928b01ff2038980e1b62b2a5bb412c8ab83e30882753b810a5509f", size = 191272, upload-time = "2026-03-26T15:09:27.857Z" }
 wheels = [
@@ -3173,7 +3173,7 @@ name = "tokenizers"
 version = "0.23.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "huggingface-hub" },
+    { name = "huggingface-hub", marker = "sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c1/60/21f715d9faba5f5407ff759472ade058ec4a507ad62bcea47cb847239a73/tokenizers-0.23.1.tar.gz", hash = "sha256:1feeeadf865a7915adc25445dea30e9933e593c31bb96c277cee36de227c8bfa", size = 365748, upload-time = "2026-04-27T14:43:25.606Z" }
 wheels = [
@@ -3295,7 +3295,7 @@ name = "types-requests"
 version = "2.33.0.20260518"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "urllib3" },
+    { name = "urllib3", marker = "sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e0/01/c5a19253fe1ac159159ddf9a3a07cec8bb5e486ec4d9002ad2821da0e5d2/types_requests-2.33.0.20260518.tar.gz", hash = "sha256:df7bd3bfe0ca8402dfb841e7d9be714bb5578203283d66d7dc4ef69343449a5e", size = 24752, upload-time = "2026-05-18T06:07:37.966Z" }
 wheels = [
