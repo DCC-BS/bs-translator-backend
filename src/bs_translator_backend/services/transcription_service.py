@@ -33,7 +33,8 @@ class TranscriptionService:
             "POST",
             f"{self.config.whisper_url}/audio/transcriptions/stream",
             files={"file": audio_file},
-            data=data,
+            data={"response_format": "text", "language": lang},
+            headers={"Authorization": f"Bearer {self.config.openai_api_key}"},
             timeout=300,
         ) as response:
             async for chunk in response.aiter_text():

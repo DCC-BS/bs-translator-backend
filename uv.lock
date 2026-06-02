@@ -234,7 +234,7 @@ wheels = [
 
 [[package]]
 name = "bs-translator-backend"
-version = "0.2.8"
+version = "0.2.12"
 source = { editable = "." }
 dependencies = [
     { name = "datasets" },

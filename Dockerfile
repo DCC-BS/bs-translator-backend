@@ -1,6 +1,6 @@
 # Stage 1: Builder
 FROM python:3.13-alpine AS builder
-COPY --from=ghcr.io/astral-sh/uv:0.9.14 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.16 /uv /uvx /bin/
 
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy

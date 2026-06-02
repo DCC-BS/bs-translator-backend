@@ -1,4 +1,5 @@
 NO_DOCUMENT = "no_document"
 INVALID_MIME_TYPE = "invalid_mime_type"
 DOCLING_TIMEOUT = "docling_timeout"
+DOCLING_TASK_FAILED = "docling_task_failed"
 UNEXPECTED_ERROR = "unexpected_error"

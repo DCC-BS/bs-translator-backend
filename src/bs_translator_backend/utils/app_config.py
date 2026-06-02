@@ -1,7 +1,7 @@
 import os
 
 from dcc_backend_common.config import AbstractAppConfig, get_env_or_throw, log_secret
-from pydantic import Field
+from pydantic import Field, field_validator
 
 
 class AppConfig(AbstractAppConfig):
@@ -16,9 +16,29 @@ class AppConfig(AbstractAppConfig):
     docling_url: str = Field(description="The URL for the Docling service")
     docling_api_key: str = Field(description="The API key for docling")
 
+    docling_poll_interval: float = Field(
+        default=2.0, description="Seconds between async task status polls"
+    )
+    docling_task_timeout: float = Field(
+        default=600.0, description="Max seconds to wait for an async docling task"
+    )
     hmac_secret: str = Field(description="The secret key for HMAC authentication")
 
     whisper_url: str = Field(description="The URL for the Whisper API")
+
+    @field_validator(
+        "openai_api_base_url", "client_url", "docling_url", "whisper_url", mode="after"
+    )
+    @classmethod
+    def strip_trailing_slash(cls, v: str) -> str:
+        return v.rstrip("/")
+
+    @field_validator("docling_poll_interval", "docling_task_timeout", mode="after")
+    @classmethod
+    def must_be_positive(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError(f"must be positive, got {v}")
+        return v
 
     @classmethod
     def from_env(cls) -> "AppConfig":
@@ -30,6 +50,8 @@ class AppConfig(AbstractAppConfig):
         client_url: str = get_env_or_throw("CLIENT_URL")
         docling_url: str = get_env_or_throw("DOCLING_URL")
         docling_api_key: str = get_env_or_throw("DOCLING_API_KEY")
+        docling_poll_interval = float(os.getenv("DOCLING_POLL_INTERVAL", "2.0"))
+        docling_task_timeout = float(os.getenv("DOCLING_TASK_TIMEOUT", "600.0"))
         hmac_secret: str = get_env_or_throw("HMAC_SECRET")
         whisper_url: str = get_env_or_throw("WHISPER_URL")
 
@@ -41,6 +63,8 @@ class AppConfig(AbstractAppConfig):
             client_url=client_url,
             docling_url=docling_url,
             docling_api_key=docling_api_key,
+            docling_poll_interval=docling_poll_interval,
+            docling_task_timeout=docling_task_timeout,
             hmac_secret=hmac_secret,
             whisper_url=whisper_url,
         )
@@ -53,8 +77,10 @@ class AppConfig(AbstractAppConfig):
             llm_api_key={log_secret(self.llm_api_key)},
             llm_model={self.llm_model},
             hmac_secret={log_secret(self.hmac_secret)},
-            docling_url={self.docling_url}
-            whisper_url={self.whisper_url}
-            reasoning={self.reasoning}
+            docling_url={self.docling_url},
+            whisper_url={self.whisper_url},
+            reasoning={self.reasoning},
+            docling_poll_interval={self.docling_poll_interval},
+            docling_task_timeout={self.docling_task_timeout}
         )
         """
