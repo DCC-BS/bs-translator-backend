@@ -27,7 +27,7 @@ class AppConfig(AbstractAppConfig):
     whisper_url: str = Field(description="The URL for the Whisper API")
 
     @field_validator(
-        "openai_api_base_url", "client_url", "docling_url", "whisper_url", mode="after"
+        "llm_api_key", "client_url", "docling_url", "whisper_url", mode="after"
     )
     @classmethod
     def strip_trailing_slash(cls, v: str) -> str:
