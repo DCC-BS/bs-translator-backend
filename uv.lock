@@ -11,11 +11,11 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-05-26T14:25:30.572504769Z"
+exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P7D"
 
 [options.exclude-newer-package]
-dcc-backend-common = { timestamp = "2026-06-02T14:25:30.572514769Z", span = "PT0S" }
+dcc-backend-common = { timestamp = "0001-01-01T00:00:00Z", span = "PT0S" }
 
 [[package]]
 name = "ag-ui-protocol"
@@ -234,7 +234,7 @@ wheels = [
 
 [[package]]
 name = "bs-translator-backend"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "dcc-backend-common" },
