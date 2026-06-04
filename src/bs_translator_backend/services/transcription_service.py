@@ -3,8 +3,12 @@ from typing import IO
 
 import httpx
 
+from dcc_backend_common.logger import get_logger
+
 from bs_translator_backend.models.language import DetectLanguage, LanguageOrAuto
 from bs_translator_backend.utils.app_config import AppConfig
+
+logger = get_logger(__name__)
 
 
 def transform_language_code_for_whisper(lang_code: str) -> str:
@@ -22,18 +26,18 @@ class TranscriptionService:
     async def transcribe(
         self, audio_file: "IO[bytes]", language: LanguageOrAuto
     ) -> AsyncGenerator[str, None]:
-        lang = None if language == DetectLanguage.AUTO else language.value
-
         data = {"response_format": "text"}
 
-        if lang is not None:
-            data["language"] = transform_language_code_for_whisper(lang.strip())
+        if language != DetectLanguage.AUTO:
+            data["language"] = transform_language_code_for_whisper(language.value.strip())
+        else:
+            logger.info("Language is set to auto")
 
         async with self.client.stream(
             "POST",
             f"{self.config.whisper_url}/audio/transcriptions/stream",
             files={"file": audio_file},
-            data={"response_format": "text", "language": lang},
+            data=data,
             headers={"Authorization": f"Bearer {self.config.llm_api_key}"},
             timeout=300,
         ) as response:
