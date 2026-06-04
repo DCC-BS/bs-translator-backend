@@ -37,15 +37,16 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
+# Install runtime dependencies for varlock (libstdc++) and sklearn/OpenMP (libgomp)
+RUN apk add --no-cache libstdc++ libgomp
+
 # Create non-root user (Alpine syntax)
 RUN addgroup -S app && adduser -S app -G app
 
 # Copy the environment, but not the source code
 COPY --from=builder --chown=app:app /app /app
-COPY run.sh /app/run.sh
-
-RUN chmod +x /app/run.sh
-RUN chown app:app /app/run.sh
+COPY --chown=app:app --chmod=755 entrypoint.sh /app/entrypoint.sh
+COPY --from=ghcr.io/dmno-dev/varlock:latest --chown=app:app /usr/local/bin/varlock /usr/local/bin/varlock
 
 # Enable virtual environment
 ENV PATH="/app/.venv/bin:$PATH"
@@ -54,4 +55,4 @@ USER app
 
 ENV ENVIRONMENT=production
 
-ENTRYPOINT ["/app/run.sh"]
+ENTRYPOINT ["/app/entrypoint.sh"]
