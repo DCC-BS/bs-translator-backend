@@ -53,6 +53,6 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 USER app
 
-ENV ENVIRONMENT=production
+ENV APP_MODE=prod
 
 ENTRYPOINT ["/app/entrypoint.sh"]
