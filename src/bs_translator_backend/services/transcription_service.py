@@ -42,4 +42,4 @@ class TranscriptionService:
             timeout=300,
         ) as response:
             async for chunk in response.aiter_text():
-                yield chunk[6:]
+                yield chunk
