@@ -2,7 +2,6 @@ from collections.abc import AsyncGenerator
 from typing import IO
 
 import httpx
-
 from dcc_backend_common.logger import get_logger
 
 from bs_translator_backend.models.language import DetectLanguage, LanguageOrAuto

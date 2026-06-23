@@ -56,7 +56,11 @@ def create_router(
         """
 
         usage_tracking_service.log_event(
-            __name__, transcribe_audio.__name__, user_id=x_client_id, file_size=audio_file.size, language=language.value
+            __name__,
+            transcribe_audio.__name__,
+            user_id=x_client_id,
+            file_size=audio_file.size,
+            language=language.value,
         )
 
         content = await audio_file.read()
