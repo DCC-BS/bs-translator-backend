@@ -1,6 +1,6 @@
 [project]
 name = "bs-translator-backend"
-version = "0.4.0"
+version = "0.4.1"
 authors = [{name = "Data Competence Center Basel-Stadt", email = "dcc@bs.ch" },{ name = "Tobias Bollinger", email = "tobias.bollinger@bs.ch" }]
 readme = "README.md"
 keywords = ['python']
@@ -16,16 +16,13 @@ classifiers = [
 ]
 dependencies = [
     "dependency-injector>=4.48.1",
-    "fastapi[standard]>=0.116.1",
+    "fastapi[standard]>=0.139.0",
     "httpx>=0.28.1",
-    "jiwer>=4.0.0",
-    "python-dotenv>=1.0.1",
     "returns>=0.26.0",
     "structlog>=25.1.0",
-    "pydantic-ai>=1.102.0",
-    "dcc-backend-common>=0.1.11,<1",
+    "pydantic-ai>=2.7.0",
+    "dcc-backend-common>=0.1.16",
     "fast-langdetect>=1.0.0",
-    "griffe>=1.0.0,<2",
 ]
 
 [project.urls]
