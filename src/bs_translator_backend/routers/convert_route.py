@@ -3,6 +3,7 @@ from collections.abc import Callable
 from typing import Annotated
 
 from dcc_backend_common.logger import get_logger
+from dcc_backend_common.usage_tracking import UsageTrackingService
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Form, Header, Request, UploadFile
 
@@ -12,7 +13,6 @@ from bs_translator_backend.models.language import LanguageOrAuto
 from bs_translator_backend.services.document_conversion_service import (
     DocumentConversionService,
 )
-from bs_translator_backend.services.usage_tracking_service import UsageTrackingService
 
 logger = get_logger(__name__)
 
@@ -33,7 +33,7 @@ def create_router(
     Returns:
         APIRouter: Configured router with conversion endpoints
     """
-    logger.info("Creating convert router")
+    logger.debug("Creating convert router")
     router: APIRouter = APIRouter(prefix="/convert", tags=["convert"])
 
     @router.post("/doc", summary="Convert document to markdown")
@@ -73,5 +73,5 @@ def create_router(
             result = task.result()
             return ConversionOutput(markdown=result.markdown, images=result.images)
 
-    logger.info("Conversion router configured")
+    logger.debug("Conversion router configured")
     return router

@@ -2,6 +2,7 @@ from collections.abc import AsyncGenerator
 from typing import Annotated
 
 from dcc_backend_common.logger import get_logger
+from dcc_backend_common.usage_tracking import UsageTrackingService
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Header, Request, UploadFile
 from fastapi.params import Form
@@ -15,7 +16,6 @@ from bs_translator_backend.models.translation import (
     TranslationInput,
 )
 from bs_translator_backend.services.translation_service import TranslationService
-from bs_translator_backend.services.usage_tracking_service import UsageTrackingService
 
 logger = get_logger(__name__)
 
@@ -34,7 +34,7 @@ def create_router(  # noqa: C901
     Returns:
         APIRouter: Configured router with translation endpoints
     """
-    logger.info("Creating translation router")
+    logger.debug("Creating translation router")
     router: APIRouter = APIRouter(prefix="/translation", tags=["translation"])
 
     @router.get("/languages", summary="Get supported languages")
@@ -121,7 +121,7 @@ def create_router(  # noqa: C901
             filename = image_file.filename
             content_type = image_file.content_type
         except Exception:
-            logger.exception("Failed to read uploaded file")
+            logger.exception("Failed to read uploaded file", filename=image_file.filename)
             raise
 
         async def generate_translation() -> AsyncGenerator[str, None]:
@@ -152,5 +152,5 @@ def create_router(  # noqa: C901
         """Detect the language of the text"""
         return await translation_service.detect_language(detect_language_input)
 
-    logger.info("Translation router configured")
+    logger.debug("Translation router configured")
     return router

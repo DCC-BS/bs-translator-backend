@@ -49,12 +49,13 @@ _DUMMY_REQUEST = httpx.Request("POST", _DOCLING_URL)
 @pytest.fixture
 def config() -> AppConfig:
     return AppConfig(
-        openai_api_base_url="http://openai",
-        openai_api_key="test-key",
+        llm_url="http://openai",
+        llm_api_key="test-key",
         llm_model="gpt-4",
         client_url="http://client",
         docling_url=_DOCLING_URL,
-        hmac_secret="secret",
+        docling_api_key="test-key",
+        hmac_secret="secret",  # noqa: S106
         whisper_url="http://whisper",
         docling_poll_interval=0.001,  # minimal sleep; patched to no-op where needed
         docling_task_timeout=600.0,
@@ -157,7 +158,7 @@ class TestResolveFile:
         mock_file.filename = "upload.pdf"
         mock_file.__class__ = UploadFile
 
-        content, filename, ct = service._resolve_file(mock_file, None, "application/pdf")
+        content, filename, _ct = service._resolve_file(mock_file, None, "application/pdf")
         assert content == data
         assert filename == "upload.pdf"
 
@@ -292,24 +293,28 @@ class TestPollTask:
         self, service: DocumentConversionService
     ) -> None:
         service.client.request = _responses(_POLL_FAILURE)
-        with patch(
-            "bs_translator_backend.services.document_conversion_service.time.monotonic",
-            side_effect=[0.0, 1.0],
+        with (
+            patch(
+                "bs_translator_backend.services.document_conversion_service.time.monotonic",
+                side_effect=[0.0, 1.0],
+            ),
+            pytest.raises(ApiErrorException) as exc_info,
         ):
-            with pytest.raises(ApiErrorException) as exc_info:
-                await service._poll_task(_TASK_ID)
+            await service._poll_task(_TASK_ID)
         assert exc_info.value.args[0]["errorId"] == DOCLING_TASK_FAILED
 
     @pytest.mark.asyncio
     async def test_timeout_raises_docling_timeout(self, service: DocumentConversionService) -> None:
         # monotonic: deadline = 0.0 + 600 = 600.0; first check returns 700.0 → expired
         service.client.request = AsyncMock()
-        with patch(
-            "bs_translator_backend.services.document_conversion_service.time.monotonic",
-            side_effect=[0.0, 700.0],
+        with (
+            patch(
+                "bs_translator_backend.services.document_conversion_service.time.monotonic",
+                side_effect=[0.0, 700.0],
+            ),
+            pytest.raises(ApiErrorException) as exc_info,
         ):
-            with pytest.raises(ApiErrorException) as exc_info:
-                await service._poll_task(_TASK_ID)
+            await service._poll_task(_TASK_ID)
         assert exc_info.value.args[0]["errorId"] == DOCLING_TIMEOUT
         service.client.request.assert_not_called()  # no poll issued before timeout
 
@@ -318,23 +323,27 @@ class TestPollTask:
         self, service: DocumentConversionService
     ) -> None:
         service.client.request = _responses({"task_status": "UNKNOWN_STATE"})
-        with patch(
-            "bs_translator_backend.services.document_conversion_service.time.monotonic",
-            side_effect=[0.0, 1.0],
+        with (
+            patch(
+                "bs_translator_backend.services.document_conversion_service.time.monotonic",
+                side_effect=[0.0, 1.0],
+            ),
+            pytest.raises(ApiErrorException) as exc_info,
         ):
-            with pytest.raises(ApiErrorException) as exc_info:
-                await service._poll_task(_TASK_ID)
+            await service._poll_task(_TASK_ID)
         assert exc_info.value.args[0]["errorId"] == UNEXPECTED_ERROR
 
     @pytest.mark.asyncio
     async def test_non_json_poll_response_raises(self, service: DocumentConversionService) -> None:
         service.client.request = AsyncMock(return_value=httpx.Response(200, text="not-json"))
-        with patch(
-            "bs_translator_backend.services.document_conversion_service.time.monotonic",
-            side_effect=[0.0, 1.0],
+        with (
+            patch(
+                "bs_translator_backend.services.document_conversion_service.time.monotonic",
+                side_effect=[0.0, 1.0],
+            ),
+            pytest.raises(ApiErrorException) as exc_info,
         ):
-            with pytest.raises(ApiErrorException) as exc_info:
-                await service._poll_task(_TASK_ID)
+            await service._poll_task(_TASK_ID)
         assert exc_info.value.args[0]["errorId"] == UNEXPECTED_ERROR
 
     @pytest.mark.asyncio
@@ -344,12 +353,14 @@ class TestPollTask:
         service.client.request = AsyncMock(
             side_effect=httpx.ConnectError("gone", request=_DUMMY_REQUEST)
         )
-        with patch(
-            "bs_translator_backend.services.document_conversion_service.time.monotonic",
-            side_effect=[0.0, 1.0],
+        with (
+            patch(
+                "bs_translator_backend.services.document_conversion_service.time.monotonic",
+                side_effect=[0.0, 1.0],
+            ),
+            pytest.raises(ApiErrorException) as exc_info,
         ):
-            with pytest.raises(ApiErrorException) as exc_info:
-                await service._poll_task(_TASK_ID)
+            await service._poll_task(_TASK_ID)
         assert exc_info.value.args[0]["errorId"] == UNEXPECTED_ERROR
 
 

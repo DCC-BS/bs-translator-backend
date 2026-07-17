@@ -30,7 +30,7 @@ class TranscriptionService:
         if language != DetectLanguage.AUTO:
             data["language"] = transform_language_code_for_whisper(language.value.strip())
         else:
-            logger.info("Language is set to auto")
+            logger.debug("Language is set to auto")
 
         async with self.client.stream(
             "POST",

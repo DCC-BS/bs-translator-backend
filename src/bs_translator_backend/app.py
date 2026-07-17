@@ -1,5 +1,6 @@
 from dcc_backend_common.fastapi_health_probes import health_probe_router
 from dcc_backend_common.fastapi_health_probes.router import ServiceDependency
+from dcc_backend_common.fastapi_logging_middleware import add_logging_middleware
 from dcc_backend_common.logger import get_logger, init_logger
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
@@ -85,7 +86,7 @@ def _configure_container(app: FastAPI, logger: BoundLogger) -> Container:
     container = Container()
     container.wire(modules=[translation_route, convert_route, transcription_route])
     container.check_dependencies()
-    logger.info("Dependency injection configured")
+    logger.debug("Dependency injection configured")
     app.state.container = container
     return container
 
@@ -103,7 +104,7 @@ def _configure_cors(app: FastAPI, client_url: str, logger: BoundLogger) -> None:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    logger.info(f"CORS configured with origin: {client_url}")
+    logger.debug("CORS configured", origin=client_url)
 
 
 def _register_routes(app: FastAPI, logger: BoundLogger) -> None:
@@ -114,7 +115,7 @@ def _register_routes(app: FastAPI, logger: BoundLogger) -> None:
     app.include_router(translation_route.create_router())
     app.include_router(convert_route.create_router())
     app.include_router(transcription_route.create_router())
-    logger.info("All routers registered")
+    logger.debug("All routers registered")
 
 
 def create_app() -> FastAPI:
@@ -135,7 +136,7 @@ def create_app() -> FastAPI:
     init_logger()
 
     logger = get_logger("app")
-    logger.info("Starting Text Mate API application")
+    logger.info("Starting BS Translator API application")
 
     app = _build_fastapi_app()
 
@@ -148,6 +149,7 @@ def create_app() -> FastAPI:
     _register_health_routes(app=app, config=config)
 
     _configure_cors(app=app, client_url=config.client_url, logger=logger)
+    add_logging_middleware(app)
     _register_routes(app=app, logger=logger)
 
     logger.info("API setup complete")

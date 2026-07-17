@@ -10,7 +10,7 @@ show_help() {
     echo "Usage: $0 [options]"
     echo ""
     echo "Options:"
-    echo "  --dev              Run in development mode using 'fastapi dev'"
+    echo "  --dev              Run in development mode with auto-reload"
     echo "  --port NUMBER      Specify the port number (default: 8000)"
     echo "  --help             Display this help message"
     echo ""
@@ -62,8 +62,8 @@ done
 # Choose command based on dev mode
 if [ "$DEV_MODE" = true ]; then
     echo "Starting in development mode on port $PORT"
-    fastapi dev ./src/bs_translator_backend/app.py --port "$PORT"
+    uvicorn bs_translator_backend.app:app --reload --port "$PORT"
 else
     echo "Starting in production mode on port $PORT"
-    fastapi run ./src/bs_translator_backend/app.py --port "$PORT"
+    uvicorn bs_translator_backend.app:app --host 0.0.0.0 --port "$PORT" --no-access-log
 fi

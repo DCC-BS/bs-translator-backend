@@ -1,11 +1,11 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class ConversionStatus(str, Enum):
+class ConversionStatus(StrEnum):
     """Status of document conversion."""
 
     PENDING = "pending"
@@ -16,7 +16,7 @@ class ConversionStatus(str, Enum):
     SKIPPED = "skipped"
 
 
-class DoclingComponentType(str, Enum):
+class DoclingComponentType(StrEnum):
     """Type of docling component that generated an error."""
 
     DOCUMENT_BACKEND = "document_backend"
@@ -33,7 +33,7 @@ class ErrorItem(BaseModel):
     error_message: str
 
 
-class ProfilingScope(str, Enum):
+class ProfilingScope(StrEnum):
     """Scope of profiling measurements."""
 
     PAGE = "page"
@@ -120,7 +120,7 @@ class Formatting(BaseModel):
     script: str = "baseline"  # baseline, sub, super
 
 
-class ContentLayer(str, Enum):
+class ContentLayer(StrEnum):
     """Content layer of document elements."""
 
     BODY = "body"
@@ -130,7 +130,7 @@ class ContentLayer(str, Enum):
     NOTES = "notes"
 
 
-class GroupLabel(str, Enum):
+class GroupLabel(StrEnum):
     """Labels for group items."""
 
     UNSPECIFIED = "unspecified"
@@ -147,7 +147,7 @@ class GroupLabel(str, Enum):
     PICTURE_AREA = "picture_area"
 
 
-class Script(str, Enum):
+class Script(StrEnum):
     """Text script position."""
 
     BASELINE = "baseline"
@@ -155,7 +155,7 @@ class Script(str, Enum):
     SUPER = "super"
 
 
-class CodeLanguageLabel(str, Enum):
+class CodeLanguageLabel(StrEnum):
     """Programming language labels for code blocks."""
 
     ADA = "Ada"
@@ -393,7 +393,7 @@ class PictureItem(BaseItem):
     annotations: list[DescriptionAnnotation | MiscAnnotation] = Field(default_factory=list)
 
 
-class GraphCellLabel(str, Enum):
+class GraphCellLabel(StrEnum):
     """Graph cell label types."""
 
     UNSPECIFIED = "unspecified"
@@ -402,7 +402,7 @@ class GraphCellLabel(str, Enum):
     CHECKBOX = "checkbox"
 
 
-class GraphLinkLabel(str, Enum):
+class GraphLinkLabel(StrEnum):
     """Graph link label types."""
 
     UNSPECIFIED = "unspecified"
