@@ -115,7 +115,7 @@ uv run basedpyright
 Run the production server:
 
 ```bash
-uv run fastapi run ./src/bs_translator_backend/app.py
+uv run uvicorn bs_translator_backend.app:app --no-access-log
 ```
 
 ## Docker Deployment

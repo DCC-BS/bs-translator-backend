@@ -24,7 +24,11 @@ async def cancel_on_disconnect(request: Request):
                         f"{request.client.host}:{request.client.port}" if request.client else "-:-"
                     )
                     logger.info(
-                        f'{client} - "{request.method} {request.url.path}" 499 DISCONNECTED'
+                        "Client disconnected, cancelling request",
+                        client=client,
+                        method=request.method,
+                        path=request.url.path,
+                        status=499,
                     )
 
                     tg.cancel_scope.cancel()

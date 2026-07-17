@@ -54,15 +54,19 @@ def get_mimetype(path_source: Path) -> str:
         ".txt": "text/plain",
     }
 
-    logger.info(
-        f"Determined MIME type '{mimetypes.get(extension, 'invalid')}' for extension '{extension}' and path '{path_source}'"
+    resolved = mimetypes.get(extension, "invalid")
+    logger.debug(
+        "Determined MIME type for file",
+        mimetype=resolved,
+        extension=extension,
+        path=str(path_source),
     )
-    return mimetypes.get(extension, "invalid")
+    return resolved
 
 
 def validate_mimetype(mimetype: str, logger_context: dict[str, Any]) -> None:
     if not mimetype or mimetype == "invalid":
-        logger.error(f"Invalid MIME type: {mimetype!r}", extra=logger_context)
+        logger.error("Invalid MIME type", mimetype=mimetype, **logger_context)
         raise ApiErrorException({
             "errorId": INVALID_MIME_TYPE,
             "status": status.HTTP_400_BAD_REQUEST,
@@ -77,7 +81,7 @@ def extract_docling_document(
     if docling_response.document.json_content is None:
         logger.error(
             "Docling response does not contain a document",
-            extra=logger_context,
+            **logger_context,
         )
         raise ApiErrorException({
             "errorId": NO_DOCUMENT,
@@ -127,14 +131,14 @@ class DocumentConversionService:
         try:
             response = await self.client.request(method, url, **kwargs)
         except httpx.TimeoutException as e:
-            logger.exception(f"{context} timed out")
+            logger.exception("Request timed out", context=context)
             raise ApiErrorException({
                 "errorId": DOCLING_TIMEOUT,
                 "status": status.HTTP_504_GATEWAY_TIMEOUT,
                 "debugMessage": f"{context} timed out",
             }) from e
         except httpx.RequestError as e:
-            logger.exception(f"{context} request error")
+            logger.exception("Request error", context=context)
             raise ApiErrorException({
                 "errorId": UNEXPECTED_ERROR,
                 "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -142,7 +146,12 @@ class DocumentConversionService:
             }) from e
 
         if not (200 <= response.status_code < 300):
-            logger.error(f"{context} failed ({response.status_code}): {response.text}")
+            logger.error(
+                "Request failed",
+                context=context,
+                status_code=response.status_code,
+                response_text=response.text,
+            )
             raise ApiErrorException({
                 "errorId": UNEXPECTED_ERROR,
                 "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -156,7 +165,7 @@ class DocumentConversionService:
         try:
             return response.json()
         except ValueError as e:
-            logger.exception(f"{context} returned non-JSON body")
+            logger.exception("Response body is not valid JSON", context=context)
             raise ApiErrorException({
                 "errorId": UNEXPECTED_ERROR,
                 "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -204,14 +213,14 @@ class DocumentConversionService:
 
         task_id = body.get("task_id")
         if not isinstance(task_id, str) or not task_id:
-            logger.error(f"Docling async submit response missing task_id: {body}")
+            logger.error("Docling async submit response missing task_id", body=body)
             raise ApiErrorException({
                 "errorId": UNEXPECTED_ERROR,
                 "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "debugMessage": f"Docling async submit response missing task_id: {body}",
             })
 
-        logger.info(f"Docling async task submitted: {task_id}")
+        logger.debug("Docling async task submitted", task_id=task_id)
         return task_id
 
     _POLL_VALID_STATES = frozenset({"pending", "started", "success", "failure"})
@@ -229,9 +238,11 @@ class DocumentConversionService:
 
         while True:
             if time.monotonic() >= deadline:
-                logger.warning(
-                    f"Docling task {task_id} timed out after {self.config.docling_task_timeout}s. "
-                    "Remote task cannot be cancelled (no cancel API in docling-serve)."
+                logger.error(
+                    "Docling task timed out; remote task cannot be cancelled "
+                    "(no cancel API in docling-serve)",
+                    task_id=task_id,
+                    timeout_seconds=self.config.docling_task_timeout,
                 )
                 raise ApiErrorException({
                     "errorId": DOCLING_TIMEOUT,
@@ -242,10 +253,14 @@ class DocumentConversionService:
             poll_response = await self._make_request("GET", poll_url, f"poll task {task_id}")
             body = self._parse_json(poll_response, f"poll task {task_id}")
             task_status: str = body.get("task_status", "")
-            logger.info(f"Docling task {task_id} status: {task_status}")
+            logger.debug("Docling task status polled", task_id=task_id, task_status=task_status)
 
             if task_status not in self._POLL_VALID_STATES:
-                logger.error(f"Docling task {task_id} returned unexpected status: {task_status!r}")
+                logger.error(
+                    "Docling task returned unexpected status",
+                    task_id=task_id,
+                    task_status=task_status,
+                )
                 raise ApiErrorException({
                     "errorId": UNEXPECTED_ERROR,
                     "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -331,7 +346,7 @@ class DocumentConversionService:
         if source_lang == DetectLanguage.AUTO:
             languages = ["de", "en", "fr", "it"]
 
-        logger.info(f"type of file: {type(file)}")
+        logger.debug("Resolving input file", file_type=type(file).__name__)
         content, filename, content_type = self._resolve_file(file, filename, content_type)
 
         files = {"files": (filename, BytesIO(content), content_type)}
@@ -362,6 +377,6 @@ class DocumentConversionService:
                 old_pattern = f"data:image/[^;]+;base64,{re.escape(base64_data)}"
                 markdown = re.sub(old_pattern, f"image{idx}.png", markdown)
             except Exception:
-                logger.exception(f"Error decoding base64 image {idx}")
+                logger.exception("Error decoding base64 image", image_index=idx)
 
         return ConversionResult(markdown=markdown, images=images)

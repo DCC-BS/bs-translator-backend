@@ -2,6 +2,7 @@ import io
 from typing import Annotated
 
 from dcc_backend_common.logger import get_logger
+from dcc_backend_common.usage_tracking import UsageTrackingService
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Form, Header, Request, UploadFile
 from fastapi.responses import StreamingResponse
@@ -10,7 +11,6 @@ from pydantic import Field
 from bs_translator_backend.container import Container
 from bs_translator_backend.models.language import DetectLanguage, LanguageOrAuto
 from bs_translator_backend.services.transcription_service import TranscriptionService
-from bs_translator_backend.services.usage_tracking_service import UsageTrackingService
 
 logger = get_logger(__name__)
 
@@ -32,7 +32,7 @@ def create_router(
     Returns:
         APIRouter: Configured router with transcription endpoints
     """
-    logger.info("Creating transcription router")
+    logger.debug("Creating transcription router")
     router: APIRouter = APIRouter(prefix="/transcription", tags=["transcription"])
 
     @router.post("/audio", summary="Transcribe audio")
@@ -75,5 +75,5 @@ def create_router(
 
         return StreamingResponse(stream_response(), media_type="text/plain")
 
-    logger.info("Transcription router configured")
+    logger.debug("Transcription router configured")
     return router
