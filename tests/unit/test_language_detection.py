@@ -1,7 +1,47 @@
-from returns.result import Success
+import pytest
+from returns.result import Failure, Success
 
 from bs_translator_backend.models.language import Language
-from bs_translator_backend.utils.language_detection import detect_language
+from bs_translator_backend.utils.language_detection import (
+    _FT_LANGUAGE_MAPPING,
+    detect_language,
+)
+
+
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        ("en", Language.EN_US),
+        ("en-us", Language.EN_US),
+        ("en-gb", Language.EN_GB),
+        ("zh", Language.ZH_CN),
+        ("zh-cn", Language.ZH_CN),
+        ("zh-tw", Language.ZH_TW),
+        ("pt", Language.PT),
+        ("pt-br", Language.PT),
+    ],
+)
+def test_regional_aliases_map_to_a_language(code: str, expected: Language) -> None:
+    assert _FT_LANGUAGE_MAPPING[code] == expected
+
+
+def test_detected_codes_are_normalized(monkeypatch: pytest.MonkeyPatch) -> None:
+    """fast_langdetect codes are lowercased and stripped before lookup."""
+    monkeypatch.setattr(
+        "bs_translator_backend.utils.language_detection.detect_language_str",
+        lambda _text: Success((" ZH-TW ", 0.9)),
+    )
+    result = detect_language("irrelevant")
+    assert isinstance(result, Success)
+    assert result.unwrap().language == Language.ZH_TW
+
+
+def test_unmapped_code_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "bs_translator_backend.utils.language_detection.detect_language_str",
+        lambda _text: Success(("xx", 0.9)),
+    )
+    assert isinstance(detect_language("irrelevant"), Failure)
 
 
 def test_detect_language_english():

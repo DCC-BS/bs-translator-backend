@@ -1,4 +1,5 @@
 from fast_langdetect import detect
+from returns.pipeline import is_successful
 from returns.result import Failure, ResultE, Success, safe
 
 from bs_translator_backend.models.language import Language
@@ -6,6 +7,7 @@ from bs_translator_backend.models.translation import DetectLanguageOutput
 
 _FT_LANGUAGE_MAPPING: dict[str, Language] = {
     "af": Language.AF,
+    "am": Language.AM,
     "ar": Language.AR,
     "bg": Language.BG,
     "bn": Language.BN,
@@ -29,8 +31,10 @@ _FT_LANGUAGE_MAPPING: dict[str, Language] = {
     "id": Language.ID,
     "it": Language.IT,
     "ja": Language.JA,
+    "ka": Language.KA,
     "kn": Language.KN,
     "ko": Language.KO,
+    "ku": Language.KU,
     "lt": Language.LT,
     "lv": Language.LV,
     "mk": Language.MK,
@@ -41,6 +45,7 @@ _FT_LANGUAGE_MAPPING: dict[str, Language] = {
     "no": Language.NO,
     "pa": Language.PA,
     "pl": Language.PL,
+    "ps": Language.PS,
     "pt": Language.PT,
     "ro": Language.RO,
     "ru": Language.RU,
@@ -53,6 +58,7 @@ _FT_LANGUAGE_MAPPING: dict[str, Language] = {
     "ta": Language.TA,
     "te": Language.TE,
     "th": Language.TH,
+    "ti": Language.TI,
     "tl": Language.TL,
     "tr": Language.TR,
     "uk": Language.UK,
@@ -68,14 +74,15 @@ _FT_LANGUAGE_MAPPING: dict[str, Language] = {
 
 
 def detect_language(text: str) -> ResultE[DetectLanguageOutput]:
-    def map_to_language(result: tuple[str, float]) -> ResultE[DetectLanguageOutput]:
-        code, confidence = result
-        lang = _FT_LANGUAGE_MAPPING.get(code.lower().strip())
-        if lang and confidence > 0.1:
-            return Success(DetectLanguageOutput(language=lang, confidence=confidence))
-        return Failure(Exception(f"Unsupported language code: {code}"))
+    detection = detect_language_str(text)
+    if not is_successful(detection):
+        return Failure(detection.failure())
 
-    return detect_language_str(text).bind(map_to_language)
+    code, confidence = detection.unwrap()
+    lang = _FT_LANGUAGE_MAPPING.get(code.lower().strip())
+    if lang and confidence > 0.1:
+        return Success(DetectLanguageOutput(language=lang, confidence=confidence))
+    return Failure(Exception(f"Unsupported language code: {code}"))
 
 
 @safe

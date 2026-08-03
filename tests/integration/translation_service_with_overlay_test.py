@@ -1,3 +1,5 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 from fastapi import UploadFile
 from starlette.datastructures import Headers
@@ -21,28 +23,6 @@ from bs_translator_backend.utils.image_overlay import (
 
 
 @pytest.fixture
-def app_config() -> AppConfig:
-    return AppConfig.from_env()
-
-
-class StubTranslationModule:
-    async def stream(
-        self,
-        source_text: str,
-        source_language: str,
-        target_language: str,
-        domain: str = "",
-        tone: str = "",
-        glossary: str = "",
-        context: str = "",
-    ):
-        normalized_target = (
-            target_language.lower() if hasattr(target_language, "lower") else str(target_language)
-        )
-        yield f"[{normalized_target}] {source_text.strip()}"
-
-
-@pytest.fixture
 def translation_service(app_config: AppConfig) -> TranslationService:
     async def fake_convert_to_docling(*args, **kwargs) -> DoclingDocument:
         bbox = BoundingBox(l=5, t=5, r=120, b=40)
@@ -63,7 +43,21 @@ def translation_service(app_config: AppConfig) -> TranslationService:
 
     text_chunk_service = TextChunkService()
 
-    return TranslationService(app_config, text_chunk_service, conversion_service_factory)
+    service = TranslationService(app_config, text_chunk_service, conversion_service_factory)
+
+    # Mock the translation agent to avoid requiring an actual LLM
+    async def mock_stream_text(delta: bool = False):
+        yield "[german] Hallo"
+
+    mock_stream = MagicMock()
+    mock_stream.stream_text = mock_stream_text
+    mock_stream.__aenter__ = AsyncMock(return_value=mock_stream)
+    mock_stream.__aexit__ = AsyncMock(return_value=None)
+
+    service.translation_agent = MagicMock()
+    service.translation_agent.run_stream = MagicMock(return_value=mock_stream)
+
+    return service
 
 
 @pytest.mark.asyncio

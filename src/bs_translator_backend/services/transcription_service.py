@@ -10,11 +10,22 @@ from bs_translator_backend.utils.app_config import AppConfig
 logger = get_logger(__name__)
 
 
-def transform_language_code_for_whisper(lang_code: str) -> str:
-    if lang_code == "en-gb" or lang_code == "en-us":
-        return "en"
-    else:
-        return lang_code
+# Codes Whisper does not know, mapped to the closest code it does know.
+_WHISPER_LANGUAGE_ALIASES: dict[str, str] = {
+    "en-gb": "en",
+    "en-us": "en",
+    "fa-af": "fa",  # Dari is transcribed as Persian
+}
+
+# Languages Whisper has no model support for. Transcription falls back to
+# auto-detection instead of sending an unknown code.
+_WHISPER_UNSUPPORTED_LANGUAGES: frozenset[str] = frozenset({"ku", "ti"})
+
+
+def transform_language_code_for_whisper(lang_code: str) -> str | None:
+    if lang_code in _WHISPER_UNSUPPORTED_LANGUAGES:
+        return None
+    return _WHISPER_LANGUAGE_ALIASES.get(lang_code, lang_code)
 
 
 class TranscriptionService:
@@ -28,7 +39,11 @@ class TranscriptionService:
         data = {"response_format": "text"}
 
         if language != DetectLanguage.AUTO:
-            data["language"] = transform_language_code_for_whisper(language.value.strip())
+            whisper_code = transform_language_code_for_whisper(language.value.strip())
+            if whisper_code is None:
+                logger.debug("Language %s is not supported by Whisper, using auto", language.value)
+            else:
+                data["language"] = whisper_code
         else:
             logger.debug("Language is set to auto")
 

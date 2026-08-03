@@ -19,11 +19,6 @@ from bs_translator_backend.utils.app_config import AppConfig
 
 
 @pytest.fixture
-def app_config() -> AppConfig:
-    return AppConfig.from_env()
-
-
-@pytest.fixture
 def translation_service(app_config: AppConfig, monkeypatch) -> TranslationService:
     async def fake_convert_to_docling(*args, **kwargs) -> DoclingDocument:
         bbox = BoundingBox(l=0, t=0, r=10, b=10)
