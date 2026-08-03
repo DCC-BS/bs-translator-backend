@@ -8,11 +8,6 @@ from bs_translator_backend.services.document_conversion_service import DocumentC
 from bs_translator_backend.utils.app_config import AppConfig
 
 
-@pytest.fixture
-def app_config() -> AppConfig:
-    return AppConfig.from_env()
-
-
 @pytest.mark.asyncio
 async def test_convert_pdf_file(app_config: AppConfig) -> None:
     async def fake_convert(*args, **kwargs) -> ConversionResult:

@@ -1,4 +1,5 @@
 from fast_langdetect import detect
+from returns.pipeline import is_successful
 from returns.result import Failure, ResultE, Success, safe
 
 from bs_translator_backend.models.language import Language
@@ -73,14 +74,15 @@ _FT_LANGUAGE_MAPPING: dict[str, Language] = {
 
 
 def detect_language(text: str) -> ResultE[DetectLanguageOutput]:
-    def map_to_language(result: tuple[str, float]) -> ResultE[DetectLanguageOutput]:
-        code, confidence = result
-        lang = _FT_LANGUAGE_MAPPING.get(code.lower().strip())
-        if lang and confidence > 0.1:
-            return Success(DetectLanguageOutput(language=lang, confidence=confidence))
-        return Failure(Exception(f"Unsupported language code: {code}"))
+    detection = detect_language_str(text)
+    if not is_successful(detection):
+        return Failure(detection.failure())
 
-    return detect_language_str(text).bind(map_to_language)
+    code, confidence = detection.unwrap()
+    lang = _FT_LANGUAGE_MAPPING.get(code.lower().strip())
+    if lang and confidence > 0.1:
+        return Success(DetectLanguageOutput(language=lang, confidence=confidence))
+    return Failure(Exception(f"Unsupported language code: {code}"))
 
 
 @safe
