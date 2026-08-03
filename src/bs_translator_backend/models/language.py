@@ -20,6 +20,7 @@ class Language(Enum):
     """
 
     AF = "af"  # Afrikaans
+    AM = "am"  # Amharic
     AR = "ar"  # Arabic
     BG = "bg"  # Bulgarian
     BN = "bn"  # Bengali
@@ -35,6 +36,7 @@ class Language(Enum):
     ES = "es"  # Spanish
     ET = "et"  # Estonian
     FA = "fa"  # Persian
+    FA_AF = "fa-af"  # Dari (Afghan Persian)
     FI = "fi"  # Finnish
     FR = "fr"  # French
     GU = "gu"  # Gujarati
@@ -45,8 +47,10 @@ class Language(Enum):
     ID = "id"  # Indonesian
     IT = "it"  # Italian
     JA = "ja"  # Japanese
+    KA = "ka"  # Georgian
     KN = "kn"  # Kannada
     KO = "ko"  # Korean
+    KU = "ku"  # Kurdish (Kurmanji)
     LT = "lt"  # Lithuanian
     LV = "lv"  # Latvian
     MK = "mk"  # Macedonian
@@ -57,6 +61,7 @@ class Language(Enum):
     NO = "no"  # Norwegian
     PA = "pa"  # Punjabi
     PL = "pl"  # Polish
+    PS = "ps"  # Pashto
     PT = "pt"  # Portuguese
     RO = "ro"  # Romanian
     RU = "ru"  # Russian
@@ -69,6 +74,7 @@ class Language(Enum):
     TA = "ta"  # Tamil
     TE = "te"  # Telugu
     TH = "th"  # Thai
+    TI = "ti"  # Tigrinya
     TL = "tl"  # Filipino
     TR = "tr"  # Turkish
     UK = "uk"  # Ukrainian
@@ -92,6 +98,7 @@ class DetectLanguage(Enum):
 # Mapping of language codes to their full names
 _LANGUAGE_NAMES = {
     Language.AF: "Afrikaans",
+    Language.AM: "Amharic",
     Language.AR: "Arabic",
     Language.BG: "Bulgarian",
     Language.BN: "Bengali",
@@ -107,6 +114,7 @@ _LANGUAGE_NAMES = {
     Language.ES: "Spanish",
     Language.ET: "Estonian",
     Language.FA: "Persian",
+    Language.FA_AF: "Dari (Afghan Persian)",
     Language.FI: "Finnish",
     Language.FR: "French",
     Language.GU: "Gujarati",
@@ -117,8 +125,10 @@ _LANGUAGE_NAMES = {
     Language.ID: "Indonesian",
     Language.IT: "Italian",
     Language.JA: "Japanese",
+    Language.KA: "Georgian",
     Language.KN: "Kannada",
     Language.KO: "Korean",
+    Language.KU: "Kurdish (Kurmanji)",
     Language.LT: "Lithuanian",
     Language.LV: "Latvian",
     Language.MK: "Macedonian",
@@ -129,6 +139,7 @@ _LANGUAGE_NAMES = {
     Language.NO: "Norwegian",
     Language.PA: "Punjabi",
     Language.PL: "Polish",
+    Language.PS: "Pashto",
     Language.PT: "Portuguese",
     Language.RO: "Romanian",
     Language.RU: "Russian",
@@ -141,6 +152,7 @@ _LANGUAGE_NAMES = {
     Language.TA: "Tamil",
     Language.TE: "Telugu",
     Language.TH: "Thai",
+    Language.TI: "Tigrinya",
     Language.TL: "Filipino",
     Language.TR: "Turkish",
     Language.UK: "Ukrainian",
