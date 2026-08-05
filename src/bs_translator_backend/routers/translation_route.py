@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator
+from contextlib import aclosing
 from typing import Annotated
 
 from dcc_backend_common.logger import get_logger
@@ -68,13 +69,17 @@ def create_router(  # noqa: C901
         )
 
         async def generate_stream() -> AsyncGenerator[str, None]:
-            async for chunk in translation_service.translate_text(
-                translation_input.text, translation_input.config
-            ):
-                if await request.is_disconnected():
-                    logger.info("Client disconnected, stopping translation stream")
-                    break
-                yield chunk
+            # aclosing: on disconnect the service generator must be closed here,
+            # inside the request context, so its cleanup (llm_call usage logging)
+            # runs deterministically instead of at garbage collection.
+            async with aclosing(
+                translation_service.translate_text(translation_input.text, translation_input.config)
+            ) as chunks:
+                async for chunk in chunks:
+                    if await request.is_disconnected():
+                        logger.info("Client disconnected, stopping translation stream")
+                        break
+                    yield chunk
 
         return StreamingResponse(
             generate_stream(),
@@ -128,14 +133,15 @@ def create_router(  # noqa: C901
             raise
 
         async def generate_translation() -> AsyncGenerator[str, None]:
-            async for translation in translation_service.translate_image(
-                file_stream, config, filename, content_type
-            ):
-                if await request.is_disconnected():
-                    logger.info("Client disconnected, stopping translation stream")
-                    break
+            async with aclosing(
+                translation_service.translate_image(file_stream, config, filename, content_type)
+            ) as translations:
+                async for translation in translations:
+                    if await request.is_disconnected():
+                        logger.info("Client disconnected, stopping translation stream")
+                        break
 
-                yield translation.model_dump_json()
+                    yield translation.model_dump_json()
 
         return StreamingResponse(
             generate_translation(),
