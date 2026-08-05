@@ -60,7 +60,9 @@ def create_router(  # noqa: C901
             user_id=x_client_id,
             text_length=len(translation_input.text),
             target_language=config.target_language.value,
-            source_language=config.source_language.value if config.source_language is not None else None,
+            source_language=config.source_language.value
+            if config.source_language is not None
+            else None,
             domain=config.domain,
             tone=config.tone,
         )
@@ -108,7 +110,9 @@ def create_router(  # noqa: C901
             "translation.image",
             user_id=x_client_id,
             target_language=config.target_language.value,
-            source_language=config.source_language.value if config.source_language is not None else None,
+            source_language=config.source_language.value
+            if config.source_language is not None
+            else None,
         )
 
         # Read the file content once to avoid issues with file being closed in streaming context
