@@ -133,7 +133,7 @@ def create_app() -> FastAPI:
         FastAPI: Configured FastAPI application instance
     """
 
-    init_logger()
+    init_logger(app_name="bs-translator")
 
     logger = get_logger("app")
     logger.info("Starting BS Translator API application")

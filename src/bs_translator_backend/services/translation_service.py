@@ -11,6 +11,7 @@ from io import BytesIO
 from typing import final
 
 from beartype.typing import AsyncGenerator
+from dcc_backend_common.usage_tracking import log_llm_call
 from fastapi import UploadFile
 
 from bs_translator_backend.agents.translation_agent import create_translation_agent
@@ -113,9 +114,14 @@ Text to translate:
             chunk_translation = ""
 
             async with self.translation_agent.run_stream(user_message) as stream:
-                async for text_part in stream.stream_text(delta=True):
-                    chunk_translation += text_part
-                    yield text_part
+                # finally: a client disconnect closes this generator mid-stream,
+                # and the tokens consumed so far must still be logged.
+                try:
+                    async for text_part in stream.stream_text(delta=True):
+                        chunk_translation += text_part
+                        yield text_part
+                finally:
+                    log_llm_call(stream)
 
             # Accumulate context for next chunk (keep last ~500 chars for context)
             accumulated_context = (accumulated_context + chunk_translation)[-500:]

@@ -54,15 +54,15 @@ def create_router(  # noqa: C901
         x_client_id: Annotated[str | None, Header()],
     ) -> StreamingResponse:
         """Translate the provided text using the specified configuration."""
+        config = translation_input.config
         usage_tracking_service.log_event(
-            __name__,
-            translate_text.__name__,
+            "translation.text",
             user_id=x_client_id,
             text_length=len(translation_input.text),
-            target_language=str(translation_input.config.target_language),
-            source_language=str(translation_input.config.source_language),
-            domain=translation_input.config.domain,
-            tone=translation_input.config.tone,
+            target_language=config.target_language.value,
+            source_language=config.source_language.value if config.source_language is not None else None,
+            domain=config.domain,
+            tone=config.tone,
         )
 
         async def generate_stream() -> AsyncGenerator[str, None]:
@@ -105,11 +105,10 @@ def create_router(  # noqa: C901
         config = TranslationConfig.model_validate_json(translation_config)
 
         usage_tracking_service.log_event(
-            __name__,
-            translate_image.__name__,
+            "translation.image",
             user_id=x_client_id,
-            target_language=str(config.target_language),
-            source_language=str(config.source_language),
+            target_language=config.target_language.value,
+            source_language=config.source_language.value if config.source_language is not None else None,
         )
 
         # Read the file content once to avoid issues with file being closed in streaming context
