@@ -73,3 +73,52 @@ async def test_image_translate(translation_service: TranslationService) -> None:
 
         assert len(translation_entries) > 0, "Should have translated at least one text segment"
         assert translation_entries[0].translated.startswith("[german]")
+
+
+@pytest.fixture
+def multi_chunk_service(translation_service: TranslationService) -> TranslationService:
+    """Translation agent that streams several chunks, so a consumer can stop early."""
+
+    async def mock_stream_text(delta: bool = False):
+        for chunk in ["one ", "two ", "three"]:
+            yield chunk
+
+    mock_stream = MagicMock()
+    mock_stream.stream_text = mock_stream_text
+    mock_stream.__aenter__ = AsyncMock(return_value=mock_stream)
+    mock_stream.__aexit__ = AsyncMock(return_value=None)
+    translation_service.translation_agent.run_stream = MagicMock(return_value=mock_stream)
+    return translation_service
+
+
+@pytest.mark.asyncio
+async def test_disconnect_mid_stream_logs_exactly_one_usage_event(
+    multi_chunk_service: TranslationService, monkeypatch
+) -> None:
+    calls: list[object] = []
+    monkeypatch.setattr(
+        "bs_translator_backend.services.translation_service.log_llm_call", calls.append
+    )
+    config = TranslationConfig(source_language=Language.DE, target_language=Language.EN)
+
+    gen = multi_chunk_service.translate_text("Hallo Welt", config)
+    assert await anext(gen)  # consume one chunk, then simulate a disconnect
+    await gen.aclose()
+
+    assert len(calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_full_stream_logs_exactly_one_usage_event(
+    multi_chunk_service: TranslationService, monkeypatch
+) -> None:
+    calls: list[object] = []
+    monkeypatch.setattr(
+        "bs_translator_backend.services.translation_service.log_llm_call", calls.append
+    )
+    config = TranslationConfig(source_language=Language.DE, target_language=Language.EN)
+
+    chunks = [c async for c in multi_chunk_service.translate_text("Hallo Welt", config)]
+
+    assert chunks
+    assert len(calls) == 1

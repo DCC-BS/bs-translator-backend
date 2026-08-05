@@ -6,7 +6,6 @@ from dcc_backend_common.usage_tracking import UsageTrackingService
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Form, Header, Request, UploadFile
 from fastapi.responses import StreamingResponse
-from pydantic import Field
 
 from bs_translator_backend.container import Container
 from bs_translator_backend.models.language import DetectLanguage, LanguageOrAuto
@@ -42,7 +41,7 @@ def create_router(
         x_client_id: Annotated[str | None, Header()],
         language: Annotated[
             LanguageOrAuto,
-            Form(title="Language", description="Language of the audio file", example=Field),
+            Form(title="Language", description="Language of the audio file", example="de"),
         ] = DetectLanguage.AUTO,
     ) -> StreamingResponse:
         """
@@ -56,8 +55,7 @@ def create_router(
         """
 
         usage_tracking_service.log_event(
-            __name__,
-            transcribe_audio.__name__,
+            "transcription.audio",
             user_id=x_client_id,
             file_size=audio_file.size,
             language=language.value,

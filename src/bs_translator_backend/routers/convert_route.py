@@ -57,7 +57,7 @@ def create_router(
         """
 
         usage_tracking_service.log_event(
-            __name__, convert.__name__, user_id=x_client_id, file_size=file.size
+            "document.convert", user_id=x_client_id, file_size=file.size
         )
 
         async with document_conversion_service_factory() as conversion_service:
