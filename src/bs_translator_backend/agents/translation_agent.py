@@ -1,39 +1,21 @@
-from openai import AsyncOpenAI
-from pydantic_ai import Agent, ModelMessage, TextOutput
-from pydantic_ai.capabilities import ProcessHistory
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.providers.openai import OpenAIProvider
+"""Translation agents built on the shared dcc-backend-common BaseAgent.
+
+This is the only module in the service that imports pydantic-ai: BaseAgent.create_agent
+is abstract and must return a pydantic_ai.Agent. Everything else — services, routers,
+models — stays free of it. The openai SDK is never imported here; BaseAgent owns client
+construction, retries, and timeouts.
+"""
+
+from typing import override
+
+from dcc_backend_common.llm_agent import BaseAgent, Preprocessor
+from dcc_backend_common.llm_agent.postprocessing import replace_eszett
+from pydantic_ai import Agent
+from pydantic_ai.models import Model
 
 from bs_translator_backend.utils.app_config import AppConfig
 
-
-async def keep_recent_message(messages: list[ModelMessage]) -> list[ModelMessage]:
-    return messages[-1:] if len(messages) > 1 else messages
-
-
-def transform_to_swissgerman_style(text: str) -> str:
-    return text.replace("ß", "ss")
-
-
-def _create_translation_model(app_config: AppConfig) -> OpenAIChatModel:
-    client = AsyncOpenAI(max_retries=3, base_url=app_config.llm_url, api_key=app_config.llm_api_key)
-    return OpenAIChatModel(
-        model_name=app_config.llm_model,
-        provider=OpenAIProvider(openai_client=client),
-        settings={"extra_body": {"chat_template_kwargs": {"enable_thinking": False}}},
-    )
-
-
-def create_translation_agent(app_config: AppConfig) -> Agent[None, str]:
-    translation_agent = Agent(
-        model=_create_translation_model(app_config),
-        output_type=TextOutput(transform_to_swissgerman_style),
-        capabilities=[ProcessHistory(keep_recent_message)],
-    )
-
-    @translation_agent.instructions
-    def get_instructions() -> str:
-        return """
+TRANSLATION_INSTRUCTION = """
 You are a senior translator and terminologist for the Cantonal Administration of Basel-Stadt in Switzerland.
 Translate source_text from source_language into target_language and output translated_text only.
 
@@ -101,19 +83,7 @@ Output:
 - translated_text: Translated text. Contains markdown formatting if the input text contains markdown formatting.
 """
 
-    return translation_agent
-
-
-def create_short_text_translation_agent(app_config: AppConfig) -> Agent[None, str]:
-    short_text_translation_agent = Agent(
-        model=_create_translation_model(app_config),
-        output_type=TextOutput(transform_to_swissgerman_style),
-        capabilities=[ProcessHistory(keep_recent_message)],
-    )
-
-    @short_text_translation_agent.instructions
-    def get_instructions() -> str:
-        return """
+SHORT_TEXT_TRANSLATION_INSTRUCTION = """
 You are a senior translator and terminologist for the Cantonal Administration of Basel-Stadt in Switzerland, performing a dictionary-style lookup translation.
 
 Special instruction:
@@ -162,4 +132,56 @@ Output:
 - translated_text: The single best translation of source_text, and nothing else.
 """
 
-    return short_text_translation_agent
+
+class TranslationAgent(BaseAgent[None, str]):
+    """Full-text translation for the Cantonal Administration of Basel-Stadt."""
+
+    def __init__(self, config: AppConfig) -> None:
+        super().__init__(config, output_type=str, enable_thinking=config.reasoning)
+
+    @override
+    def _get_postprocessors(self) -> list[Preprocessor]:
+        """Keep replace_eszett; drop trim_text — the prompts require exact whitespace."""
+        return [replace_eszett]
+
+    @override
+    def create_agent(self, model: Model) -> Agent[None, str]:
+        agent = Agent[None, str](
+            model=model,
+            output_type=str,
+            name="Translation Agent",
+            description="Translates full texts into the target language, preserving markdown",
+        )
+
+        @agent.instructions
+        def get_instruction() -> str:
+            return TRANSLATION_INSTRUCTION
+
+        return agent
+
+
+class ShortTextTranslationAgent(BaseAgent[None, str]):
+    """Dictionary-style translation for inputs of 1-3 words."""
+
+    def __init__(self, config: AppConfig) -> None:
+        super().__init__(config, output_type=str, enable_thinking=config.reasoning)
+
+    @override
+    def _get_postprocessors(self) -> list[Preprocessor]:
+        """Keep replace_eszett; drop trim_text — the prompts require exact whitespace."""
+        return [replace_eszett]
+
+    @override
+    def create_agent(self, model: Model) -> Agent[None, str]:
+        agent = Agent[None, str](
+            model=model,
+            output_type=str,
+            name="Short Text Translation Agent",
+            description="Translates 1-3 word inputs as a lexical lookup rather than copying them verbatim",
+        )
+
+        @agent.instructions
+        def get_instruction() -> str:
+            return SHORT_TEXT_TRANSLATION_INSTRUCTION
+
+        return agent
