@@ -106,6 +106,58 @@ async def test_single_character_early_return_short_circuits_before_any_agent(
     translation_service.short_text_translation_agent.run_stream_text.assert_not_called()
 
 
+def test_short_text_user_message_omits_empty_metadata_fields(
+    translation_service: TranslationService,
+) -> None:
+    config = TranslationConfig(
+        source_language=Language.DE,
+        target_language=Language.FR,
+        domain="",
+        tone="",
+        glossary="",
+        context="",
+    )
+
+    message = translation_service._create_short_text_user_message(
+        text="Hirsch",
+        translation_config=config,
+        assert_source_language=False,
+    )
+
+    expected = "Translate the following text into French.\n\nText to translate:\nHirsch\n"
+    assert message == expected
+    assert "Domain:" not in message
+    assert "Tone:" not in message
+    assert "Glossary:" not in message
+    assert "Context:" not in message
+
+
+def test_short_text_user_message_includes_non_empty_metadata_fields(
+    translation_service: TranslationService,
+) -> None:
+    config = TranslationConfig(
+        source_language=Language.DE,
+        target_language=Language.FR,
+        domain="Legal",
+        tone="Formal",
+        glossary="Hirsch -> Cerf",
+        context="Forest document",
+    )
+
+    message = translation_service._create_short_text_user_message(
+        text="Hirsch",
+        translation_config=config,
+        assert_source_language=True,
+    )
+
+    assert "Translate the following text from German into French." in message
+    assert "Domain: Legal" in message
+    assert "Tone: Formal" in message
+    assert "Glossary: Hirsch -> Cerf" in message
+    assert "Context:\nForest document" in message
+    assert "Text to translate:\nHirsch\n" in message
+
+
 def test_short_text_user_message_includes_source_and_target_language(
     translation_service: TranslationService,
 ) -> None:

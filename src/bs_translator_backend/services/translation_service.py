@@ -116,7 +116,11 @@ Text to translate:
         instruction falls back to omitting it, letting the model infer it itself.
         """
         target_language_name: str = get_language_name(translation_config.target_language)
-        if assert_source_language:
+        if (
+            assert_source_language
+            and translation_config.source_language
+            and translation_config.source_language != DetectLanguage.AUTO
+        ):
             source_language_name: str = get_language_name(translation_config.source_language)
             instruction = (
                 f"Translate the following text from {source_language_name} "
@@ -124,12 +128,19 @@ Text to translate:
             )
         else:
             instruction = f"Translate the following text into {target_language_name}."
-        return f"""{instruction}
-Domain: {translation_config.domain}
-Tone: {translation_config.tone}
-Glossary: {translation_config.glossary}
-Context:
-{translation_config.context}
+
+        lines = [instruction]
+        if translation_config.domain:
+            lines.append(f"Domain: {translation_config.domain}")
+        if translation_config.tone:
+            lines.append(f"Tone: {translation_config.tone}")
+        if translation_config.glossary:
+            lines.append(f"Glossary: {translation_config.glossary}")
+        if translation_config.context:
+            lines.append(f"Context:\n{translation_config.context}")
+
+        metadata_block = "\n".join(lines)
+        return f"""{metadata_block}
 
 Text to translate:
 {text}
