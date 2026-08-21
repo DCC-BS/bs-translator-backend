@@ -240,6 +240,65 @@ async def test_auto_source_low_confidence_detection_is_not_asserted_in_short_tex
     assert "Translate the following text into French." in prompt
 
 
+@pytest.mark.asyncio
+async def test_auto_source_low_confidence_does_not_skip_when_target_is_german(
+    translation_service: TranslationService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Low confidence detection must not default to German and skip when target is German."""
+    monkeypatch.setattr(
+        "bs_translator_backend.services.translation_service.detect_language",
+        lambda _text: Success(DetectLanguageOutput(language=Language.DE, confidence=0.35)),
+    )
+    config = TranslationConfig(source_language=DetectLanguage.AUTO, target_language=Language.DE)
+
+    chunks = [c async for c in translation_service.translate_text("Hirsch", config)]
+
+    assert "".join(chunks) == "short-agent-output"
+    translation_service.short_text_translation_agent.run_stream_text.assert_called_once()
+    prompt = translation_service.short_text_translation_agent.run_stream_text.call_args.kwargs[
+        "user_prompt"
+    ]
+    assert "Translate the following text into German." in prompt
+    assert "from" not in prompt
+
+
+@pytest.mark.asyncio
+async def test_auto_source_failed_detection_routes_to_short_agent_when_target_is_german(
+    translation_service: TranslationService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Failed language detection must route to short-text agent with minimal prompt."""
+    from returns.result import Failure
+
+    monkeypatch.setattr(
+        "bs_translator_backend.services.translation_service.detect_language",
+        lambda _text: Failure(Exception("Unsupported")),
+    )
+    config = TranslationConfig(source_language=DetectLanguage.AUTO, target_language=Language.DE)
+
+    chunks = [c async for c in translation_service.translate_text("hi", config)]
+
+    assert "".join(chunks) == "short-agent-output"
+    translation_service.short_text_translation_agent.run_stream_text.assert_called_once()
+    prompt = translation_service.short_text_translation_agent.run_stream_text.call_args.kwargs[
+        "user_prompt"
+    ]
+    assert "Translate the following text into German." in prompt
+
+
+@pytest.mark.asyncio
+async def test_explicit_same_source_and_target_still_skips(
+    translation_service: TranslationService,
+) -> None:
+    """Explicitly setting source=DE and target=DE must still short-circuit without calling agents."""
+    config = TranslationConfig(source_language=Language.DE, target_language=Language.DE)
+
+    chunks = [c async for c in translation_service.translate_text("Hirsch", config)]
+
+    assert chunks == ["Hirsch"]
+    translation_service.short_text_translation_agent.run_stream_text.assert_not_called()
+    translation_service.translation_agent.run_stream_text.assert_not_called()
+
+
 @pytest.mark.parametrize(
     ("source_language", "detect_return", "text"),
     [

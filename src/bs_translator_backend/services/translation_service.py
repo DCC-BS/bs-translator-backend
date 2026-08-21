@@ -161,22 +161,26 @@ Text to translate:
             detected_confidence = detection_result.map(lambda result: result.confidence).value_or(
                 0.0
             )
-            detected = detection_result.map(lambda result: result.language).value_or(Language.DE)
-            if isinstance(detected, DetectLanguage):
-                config.source_language = Language.DE
-            else:
+            detected = detection_result.map(lambda result: result.language).value_or(None)
+
+            if (
+                detected is not None
+                and not isinstance(detected, DetectLanguage)
+                and (
+                    detected_confidence >= SHORT_TEXT_SOURCE_LANGUAGE_CONFIDENCE_THRESHOLD
+                    if use_short_text_agent
+                    else True
+                )
+            ):
                 config.source_language = detected
-            # Auto-detection on 1-3 word inputs is unreliable (see
-            # SHORT_TEXT_SOURCE_LANGUAGE_CONFIDENCE_THRESHOLD); only trust it enough
-            # to assert it in the short-text prompt when confidence is high.
-            source_language_trustworthy = (
-                detected_confidence >= SHORT_TEXT_SOURCE_LANGUAGE_CONFIDENCE_THRESHOLD
-            )
+                source_language_trustworthy = True
+            else:
+                source_language_trustworthy = False
         else:
             # The caller (i.e. the user, via the UI) explicitly chose this language.
             source_language_trustworthy = True
 
-        if config.source_language == config.target_language:
+        if source_language_trustworthy and config.source_language == config.target_language:
             yield text
             return
 
