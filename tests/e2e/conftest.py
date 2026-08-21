@@ -57,6 +57,7 @@ os.environ.setdefault("HMAC_SECRET", "test-secret")
 os.environ.setdefault("WHISPER_URL", "http://whisper.invalid/v1")
 os.environ.setdefault("IS_PROD", "false")
 
+import dcc_backend_common.llm_agent.base_agent as base_agent_module
 import httpx
 import pytest
 import pytest_asyncio
@@ -65,7 +66,6 @@ from dcc_backend_common.logger import get_logger
 from fastapi import FastAPI
 from openai import AsyncOpenAI as RealAsyncOpenAI
 
-import bs_translator_backend.agents.translation_agent as translation_agent_module
 from bs_translator_backend import app as app_module
 from bs_translator_backend.utils.app_config import AppConfig
 
@@ -193,7 +193,7 @@ def fake_llm(monkeypatch: pytest.MonkeyPatch) -> FakeLLM:
         kwargs["max_retries"] = 0
         return RealAsyncOpenAI(*args, **kwargs)  # type: ignore[arg-type]
 
-    monkeypatch.setattr(translation_agent_module, "AsyncOpenAI", _factory)
+    monkeypatch.setattr(base_agent_module, "AsyncOpenAI", _factory)
     return fake
 
 

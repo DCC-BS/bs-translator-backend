@@ -25,15 +25,14 @@ def app_config() -> AppConfig:
     )
 
 
-def _make_mock_stream(output: str) -> MagicMock:
-    async def mock_stream_text(delta: bool = False):
+def _make_mock_agent(output: str) -> MagicMock:
+    agent = MagicMock()
+
+    async def mock_run_stream_text(user_prompt: str, delta: bool = True):
         yield output
 
-    mock_stream = MagicMock()
-    mock_stream.stream_text = mock_stream_text
-    mock_stream.__aenter__ = AsyncMock(return_value=mock_stream)
-    mock_stream.__aexit__ = AsyncMock(return_value=None)
-    return mock_stream
+    agent.run_stream_text = MagicMock(side_effect=mock_run_stream_text)
+    return agent
 
 
 @pytest.fixture
@@ -45,15 +44,8 @@ def translation_service(app_config: AppConfig) -> TranslationService:
 
     # Mock both agents to avoid requiring an actual LLM, and to let tests assert
     # which agent a given input was routed to.
-    service.translation_agent = MagicMock()
-    service.translation_agent.run_stream = MagicMock(
-        return_value=_make_mock_stream("long-agent-output")
-    )
-
-    service.short_text_translation_agent = MagicMock()
-    service.short_text_translation_agent.run_stream = MagicMock(
-        return_value=_make_mock_stream("short-agent-output")
-    )
+    service.translation_agent = _make_mock_agent("long-agent-output")
+    service.short_text_translation_agent = _make_mock_agent("short-agent-output")
 
     return service
 
@@ -68,8 +60,8 @@ async def test_short_word_counts_route_to_short_text_agent(
     chunks = [c async for c in translation_service.translate_text(text, config)]
 
     assert "".join(chunks) == "short-agent-output"
-    translation_service.short_text_translation_agent.run_stream.assert_called_once()
-    translation_service.translation_agent.run_stream.assert_not_called()
+    translation_service.short_text_translation_agent.run_stream_text.assert_called_once()
+    translation_service.translation_agent.run_stream_text.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -83,8 +75,8 @@ async def test_four_word_input_routes_to_normal_agent(
     ]
 
     assert "".join(chunks) == "long-agent-output"
-    translation_service.translation_agent.run_stream.assert_called_once()
-    translation_service.short_text_translation_agent.run_stream.assert_not_called()
+    translation_service.translation_agent.run_stream_text.assert_called_once()
+    translation_service.short_text_translation_agent.run_stream_text.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -97,8 +89,8 @@ async def test_multiline_short_input_routes_to_normal_agent(
     chunks = [c async for c in translation_service.translate_text("Hirsch\nHirsch", config)]
 
     assert "".join(chunks) == "long-agent-output"
-    translation_service.translation_agent.run_stream.assert_called_once()
-    translation_service.short_text_translation_agent.run_stream.assert_not_called()
+    translation_service.translation_agent.run_stream_text.assert_called_once()
+    translation_service.short_text_translation_agent.run_stream_text.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -110,8 +102,8 @@ async def test_single_character_early_return_short_circuits_before_any_agent(
     chunks = [c async for c in translation_service.translate_text("H", config)]
 
     assert chunks == ["H"]
-    translation_service.translation_agent.run_stream.assert_not_called()
-    translation_service.short_text_translation_agent.run_stream.assert_not_called()
+    translation_service.translation_agent.run_stream_text.assert_not_called()
+    translation_service.short_text_translation_agent.run_stream_text.assert_not_called()
 
 
 def test_short_text_user_message_includes_source_and_target_language(
@@ -152,7 +144,9 @@ async def test_explicit_source_language_is_asserted_in_short_text_prompt(
 
     [c async for c in translation_service.translate_text("Hirsch", config)]
 
-    prompt = translation_service.short_text_translation_agent.run_stream.call_args[0][0]
+    prompt = translation_service.short_text_translation_agent.run_stream_text.call_args.kwargs[
+        "user_prompt"
+    ]
     assert "Translate the following text from German into French." in prompt
 
 
@@ -169,7 +163,9 @@ async def test_auto_source_high_confidence_detection_is_asserted_in_short_text_p
 
     [c async for c in translation_service.translate_text("Der Hirsch", config)]
 
-    prompt = translation_service.short_text_translation_agent.run_stream.call_args[0][0]
+    prompt = translation_service.short_text_translation_agent.run_stream_text.call_args.kwargs[
+        "user_prompt"
+    ]
     assert "Translate the following text from German into French." in prompt
 
 
@@ -186,7 +182,9 @@ async def test_auto_source_low_confidence_detection_is_not_asserted_in_short_tex
 
     [c async for c in translation_service.translate_text("Hirsch", config)]
 
-    prompt = translation_service.short_text_translation_agent.run_stream.call_args[0][0]
+    prompt = translation_service.short_text_translation_agent.run_stream_text.call_args.kwargs[
+        "user_prompt"
+    ]
     assert "from" not in prompt.split("\n", 1)[0]
     assert "Translate the following text into French." in prompt
 
@@ -225,6 +223,33 @@ async def test_long_path_prompt_never_mentions_source_language(
 
     [c async for c in translation_service.translate_text(text, config)]
 
-    prompt = translation_service.translation_agent.run_stream.call_args[0][0]
+    prompt = translation_service.translation_agent.run_stream_text.call_args.kwargs["user_prompt"]
     assert "Translate the following text into French." in prompt
     assert "from" not in prompt.split("\n", 1)[0]
+
+
+class TestServiceUsesBaseAgents:
+    def test_service_builds_base_agent_instances(self, app_config) -> None:
+        from dcc_backend_common.llm_agent import BaseAgent
+
+        service = TranslationService(app_config, TextChunkService(), lambda: MagicMock())
+        assert isinstance(service.translation_agent, BaseAgent)
+        assert isinstance(service.short_text_translation_agent, BaseAgent)
+
+    @pytest.mark.asyncio
+    async def test_aclose_closes_both_agents(self, app_config) -> None:
+        service = TranslationService(app_config, TextChunkService(), lambda: MagicMock())
+        service.translation_agent.close = AsyncMock()
+        service.short_text_translation_agent.close = AsyncMock()
+
+        await service.aclose()
+
+        service.translation_agent.close.assert_awaited_once()
+        service.short_text_translation_agent.close.assert_awaited_once()
+
+    def test_module_does_not_import_pydantic_ai(self) -> None:
+        from pathlib import Path
+
+        import bs_translator_backend.services.translation_service as mod
+
+        assert "pydantic_ai" not in Path(mod.__file__).read_text()

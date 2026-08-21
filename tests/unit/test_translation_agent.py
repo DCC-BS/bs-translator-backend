@@ -58,4 +58,3 @@ class TestNoDirectSdkUsage:
         source = Path(mod.__file__).read_text()
         assert "import openai" not in source
         assert "from openai" not in source
-

@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi import UploadFile
@@ -45,17 +45,15 @@ def translation_service(app_config: AppConfig) -> TranslationService:
 
     service = TranslationService(app_config, text_chunk_service, conversion_service_factory)
 
-    # Mock the translation agent to avoid requiring an actual LLM
-    async def mock_stream_text(delta: bool = False):
+    # Mock the translation agents to avoid requiring an actual LLM
+    async def mock_run_stream_text(user_prompt: str, delta: bool = True):
         yield "[german] Hallo"
 
-    mock_stream = MagicMock()
-    mock_stream.stream_text = mock_stream_text
-    mock_stream.__aenter__ = AsyncMock(return_value=mock_stream)
-    mock_stream.__aexit__ = AsyncMock(return_value=None)
-
     service.translation_agent = MagicMock()
-    service.translation_agent.run_stream = MagicMock(return_value=mock_stream)
+    service.translation_agent.run_stream_text = mock_run_stream_text
+
+    service.short_text_translation_agent = MagicMock()
+    service.short_text_translation_agent.run_stream_text = mock_run_stream_text
 
     return service
 

@@ -6,18 +6,16 @@ It handles text translation using LLM models with customizable parameters includ
 tone, domain, glossary, and context settings.
 """
 
-from collections.abc import Callable
+from collections.abc import AsyncGenerator, Callable
 from functools import partial
 from io import BytesIO
 from typing import final
 
-from beartype.typing import AsyncGenerator
-from dcc_backend_common.usage_tracking import log_llm_call
 from fastapi import UploadFile
 
 from bs_translator_backend.agents.translation_agent import (
-    create_short_text_translation_agent,
-    create_translation_agent,
+    ShortTextTranslationAgent,
+    TranslationAgent,
 )
 from bs_translator_backend.models.conversion_result import BBox, ConversionImageTextEntry
 from bs_translator_backend.models.language import DetectLanguage, Language, get_language_name
@@ -83,8 +81,8 @@ class TranslationService:
         self.app_config = app_config
         self.text_chunk_service = text_chunk_service
         self._conversion_service_factory = conversion_service_factory
-        self.translation_agent = create_translation_agent(app_config)
-        self.short_text_translation_agent = create_short_text_translation_agent(app_config)
+        self.translation_agent = TranslationAgent(app_config)
+        self.short_text_translation_agent = ShortTextTranslationAgent(app_config)
 
     def _create_user_message(
         self, text: str, translation_config: TranslationConfig, reasoning: bool = False
@@ -213,19 +211,19 @@ Text to translate:
                 reasoning=self.app_config.reasoning,
             )
             chunk_translation = ""
-
-            async with translation_agent.run_stream(user_message) as stream:
-                # finally: a client disconnect closes this generator mid-stream,
-                # and the tokens consumed so far must still be logged.
-                try:
-                    async for text_part in stream.stream_text(delta=True):
-                        chunk_translation += text_part
-                        yield text_part
-                finally:
-                    log_llm_call(stream)
+            async for text_part in translation_agent.run_stream_text(
+                user_prompt=user_message, delta=True
+            ):
+                chunk_translation += text_part
+                yield text_part
 
             # Accumulate context for next chunk (keep last ~500 chars for context)
             accumulated_context = (accumulated_context + chunk_translation)[-500:]
+
+    async def aclose(self) -> None:
+        """Close both agents' HTTP clients. Called from the FastAPI lifespan."""
+        await self.translation_agent.close()
+        await self.short_text_translation_agent.close()
 
     async def translate_image(
         self,
