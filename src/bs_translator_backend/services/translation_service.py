@@ -7,6 +7,7 @@ tone, domain, glossary, and context settings.
 """
 
 from collections.abc import Callable
+from functools import partial
 from io import BytesIO
 from typing import final
 
@@ -14,7 +15,10 @@ from beartype.typing import AsyncGenerator
 from dcc_backend_common.usage_tracking import log_llm_call
 from fastapi import UploadFile
 
-from bs_translator_backend.agents.translation_agent import create_translation_agent
+from bs_translator_backend.agents.translation_agent import (
+    create_short_text_translation_agent,
+    create_translation_agent,
+)
 from bs_translator_backend.models.conversion_result import BBox, ConversionImageTextEntry
 from bs_translator_backend.models.language import DetectLanguage, Language, get_language_name
 from bs_translator_backend.models.translation import (
@@ -26,6 +30,35 @@ from bs_translator_backend.services.document_conversion_service import DocumentC
 from bs_translator_backend.services.text_chunk_service import TextChunkService
 from bs_translator_backend.utils.app_config import AppConfig
 from bs_translator_backend.utils.language_detection import detect_language
+
+# Inputs at or below this many words are treated as dictionary/lexical lookups
+# (e.g. "Hirsch", "Der Hirsch") and routed to the short-text translation agent,
+# whose instructions counter the model's tendency to copy short, capitalized
+# German nouns verbatim under a mistaken "proper noun" assumption.
+SHORT_TEXT_WORD_THRESHOLD = 3
+
+# Minimum fast-langdetect confidence required before the short-text prompt is
+# allowed to assert the detected source language. Measured on this branch:
+#   'Hirsch'      -> en-us  conf=0.36   <- German word, detected as English
+#   'Auto'        -> en-us  conf=0.38   <- German word, detected as English
+#   'Hund'        -> de     conf=0.67
+#   'Wasser'      -> de     conf=0.91
+#   'Der Hirsch'  -> de     conf=0.96
+#   'jelen'       -> hu     conf=1.00   <- confidently wrong (Hungarian for "deer")
+# 0.9 accepts the two high-confidence correct detections above and rejects the
+# two confidently-wrong low-confidence ones. No threshold catches 'jelen' -
+# the goal is only to stop confidently-wrong *low*-confidence claims, not to
+# guarantee correctness.
+SHORT_TEXT_SOURCE_LANGUAGE_CONFIDENCE_THRESHOLD = 0.9
+
+
+def _is_short_text(text: str) -> bool:
+    """Whether text is a short, single-line phrase (1-3 words) suited to a lexical lookup."""
+    stripped = text.strip()
+    if "\n" in stripped:
+        return False
+    word_count = len(stripped.split())
+    return 1 <= word_count <= SHORT_TEXT_WORD_THRESHOLD
 
 
 @final
@@ -51,6 +84,7 @@ class TranslationService:
         self.text_chunk_service = text_chunk_service
         self._conversion_service_factory = conversion_service_factory
         self.translation_agent = create_translation_agent(app_config)
+        self.short_text_translation_agent = create_short_text_translation_agent(app_config)
 
     def _create_user_message(
         self, text: str, translation_config: TranslationConfig, reasoning: bool = False
@@ -58,6 +92,47 @@ class TranslationService:
         """Create the prompt message for the translation agent."""
         target_language_name: str = get_language_name(translation_config.target_language)
         prompt = f"""Translate the following text into {target_language_name}.
+Domain: {translation_config.domain}
+Tone: {translation_config.tone}
+Glossary: {translation_config.glossary}
+Context:
+{translation_config.context}
+
+Text to translate:
+{text}
+"""
+        if not reasoning:
+            prompt += "/no_think"
+        return prompt
+
+    def _create_short_text_user_message(
+        self,
+        text: str,
+        translation_config: TranslationConfig,
+        reasoning: bool = False,
+        assert_source_language: bool = True,
+    ) -> str:
+        """Create the prompt message for the short-text (lexical lookup) translation agent.
+
+        The "from {source}" clause is only asserted when `assert_source_language` is
+        true, i.e. when the source language is trustworthy: explicitly chosen by the
+        caller, or auto-detected with confidence at or above
+        SHORT_TEXT_SOURCE_LANGUAGE_CONFIDENCE_THRESHOLD. Asserting a wrong source
+        language (e.g. claiming a German noun is English) makes the model more
+        likely to copy it verbatim instead of translating it - exactly the bug this
+        agent exists to fix. When the source language is not trustworthy, the
+        instruction falls back to omitting it, letting the model infer it itself.
+        """
+        target_language_name: str = get_language_name(translation_config.target_language)
+        if assert_source_language:
+            source_language_name: str = get_language_name(translation_config.source_language)
+            instruction = (
+                f"Translate the following text from {source_language_name} "
+                f"into {target_language_name}."
+            )
+        else:
+            instruction = f"Translate the following text into {target_language_name}."
+        prompt = f"""{instruction}
 Domain: {translation_config.domain}
 Tone: {translation_config.tone}
 Glossary: {translation_config.glossary}
@@ -79,17 +154,43 @@ Text to translate:
             yield text
             return
 
+        use_short_text_agent = _is_short_text(text)
+
         if not config.source_language or config.source_language == DetectLanguage.AUTO:
             detection_result = detect_language(text)
+            detected_confidence = detection_result.map(lambda result: result.confidence).value_or(
+                0.0
+            )
             detected = detection_result.map(lambda result: result.language).value_or(Language.DE)
             if isinstance(detected, DetectLanguage):
                 config.source_language = Language.DE
             else:
                 config.source_language = detected
+            # Auto-detection on 1-3 word inputs is unreliable (see
+            # SHORT_TEXT_SOURCE_LANGUAGE_CONFIDENCE_THRESHOLD); only trust it enough
+            # to assert it in the short-text prompt when confidence is high.
+            source_language_trustworthy = (
+                detected_confidence >= SHORT_TEXT_SOURCE_LANGUAGE_CONFIDENCE_THRESHOLD
+            )
+        else:
+            # The caller (i.e. the user, via the UI) explicitly chose this language.
+            source_language_trustworthy = True
 
         if config.source_language == config.target_language:
             yield text
             return
+
+        translation_agent = (
+            self.short_text_translation_agent if use_short_text_agent else self.translation_agent
+        )
+        create_user_message = (
+            partial(
+                self._create_short_text_user_message,
+                assert_source_language=source_language_trustworthy,
+            )
+            if use_short_text_agent
+            else self._create_user_message
+        )
 
         text_chunks = self.text_chunk_service.chunk_text(text)
         accumulated_context = ""
@@ -106,14 +207,14 @@ Text to translate:
                 else config.context,
             )
 
-            user_message = self._create_user_message(
+            user_message = create_user_message(
                 text=text_chunk,
                 translation_config=chunk_config,
                 reasoning=self.app_config.reasoning,
             )
             chunk_translation = ""
 
-            async with self.translation_agent.run_stream(user_message) as stream:
+            async with translation_agent.run_stream(user_message) as stream:
                 # finally: a client disconnect closes this generator mid-stream,
                 # and the tokens consumed so far must still be logged.
                 try:

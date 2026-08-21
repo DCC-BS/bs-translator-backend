@@ -53,6 +53,7 @@ _FT_LANGUAGE_MAPPING: dict[str, Language] = {
     "sl": Language.SL,
     "so": Language.SO,
     "sq": Language.SQ,
+    "sr": Language.SR,
     "sv": Language.SV,
     "sw": Language.SW,
     "ta": Language.TA,

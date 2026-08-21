@@ -69,6 +69,7 @@ class Language(Enum):
     SL = "sl"  # Slovenian
     SO = "so"  # Somali
     SQ = "sq"  # Albanian
+    SR = "sr"  # Serbian
     SV = "sv"  # Swedish
     SW = "sw"  # Swahili
     TA = "ta"  # Tamil
@@ -147,6 +148,7 @@ _LANGUAGE_NAMES = {
     Language.SL: "Slovenian",
     Language.SO: "Somali",
     Language.SQ: "Albanian",
+    Language.SR: "Serbian",
     Language.SV: "Swedish",
     Language.SW: "Swahili",
     Language.TA: "Tamil",

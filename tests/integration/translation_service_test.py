@@ -53,6 +53,9 @@ def translation_service(app_config: AppConfig, monkeypatch) -> TranslationServic
     service.translation_agent = MagicMock()
     service.translation_agent.run_stream = MagicMock(return_value=mock_stream)
 
+    service.short_text_translation_agent = MagicMock()
+    service.short_text_translation_agent.run_stream = MagicMock(return_value=mock_stream)
+
     return service
 
 
@@ -88,6 +91,9 @@ def multi_chunk_service(translation_service: TranslationService) -> TranslationS
     mock_stream.__aenter__ = AsyncMock(return_value=mock_stream)
     mock_stream.__aexit__ = AsyncMock(return_value=None)
     translation_service.translation_agent.run_stream = MagicMock(return_value=mock_stream)
+    translation_service.short_text_translation_agent.run_stream = MagicMock(
+        return_value=mock_stream
+    )
     return translation_service
 
 
