@@ -84,12 +84,10 @@ class TranslationService:
         self.translation_agent = TranslationAgent(app_config)
         self.short_text_translation_agent = ShortTextTranslationAgent(app_config)
 
-    def _create_user_message(
-        self, text: str, translation_config: TranslationConfig, reasoning: bool = False
-    ) -> str:
+    def _create_user_message(self, text: str, translation_config: TranslationConfig) -> str:
         """Create the prompt message for the translation agent."""
         target_language_name: str = get_language_name(translation_config.target_language)
-        prompt = f"""Translate the following text into {target_language_name}.
+        return f"""Translate the following text into {target_language_name}.
 Domain: {translation_config.domain}
 Tone: {translation_config.tone}
 Glossary: {translation_config.glossary}
@@ -99,15 +97,11 @@ Context:
 Text to translate:
 {text}
 """
-        if not reasoning:
-            prompt += "/no_think"
-        return prompt
 
     def _create_short_text_user_message(
         self,
         text: str,
         translation_config: TranslationConfig,
-        reasoning: bool = False,
         assert_source_language: bool = True,
     ) -> str:
         """Create the prompt message for the short-text (lexical lookup) translation agent.
@@ -130,7 +124,7 @@ Text to translate:
             )
         else:
             instruction = f"Translate the following text into {target_language_name}."
-        prompt = f"""{instruction}
+        return f"""{instruction}
 Domain: {translation_config.domain}
 Tone: {translation_config.tone}
 Glossary: {translation_config.glossary}
@@ -140,9 +134,6 @@ Context:
 Text to translate:
 {text}
 """
-        if not reasoning:
-            prompt += "/no_think"
-        return prompt
 
     async def translate_text(
         self, text: str, config: TranslationConfig
@@ -208,7 +199,6 @@ Text to translate:
             user_message = create_user_message(
                 text=text_chunk,
                 translation_config=chunk_config,
-                reasoning=self.app_config.reasoning,
             )
             chunk_translation = ""
             async for text_part in translation_agent.run_stream_text(

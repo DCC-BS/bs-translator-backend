@@ -112,7 +112,7 @@ def test_short_text_user_message_includes_source_and_target_language(
     config = TranslationConfig(source_language=Language.DE, target_language=Language.FR)
 
     message = translation_service._create_short_text_user_message(
-        text="Hirsch", translation_config=config, reasoning=False
+        text="Hirsch", translation_config=config
     )
 
     assert "German" in message
@@ -127,7 +127,6 @@ def test_short_text_user_message_omits_source_language_when_not_asserted(
     message = translation_service._create_short_text_user_message(
         text="Hirsch",
         translation_config=config,
-        reasoning=False,
         assert_source_language=False,
     )
 
@@ -253,3 +252,16 @@ class TestServiceUsesBaseAgents:
         import bs_translator_backend.services.translation_service as mod
 
         assert "pydantic_ai" not in Path(mod.__file__).read_text()
+
+    def test_user_message_has_no_no_think_marker(self, app_config) -> None:
+        service = TranslationService(app_config, TextChunkService(), lambda: MagicMock())
+        config = TranslationConfig(
+            target_language=Language.FR,
+            source_language=Language.DE,
+            domain="",
+            tone="",
+            glossary="",
+            context="",
+        )
+        for build in (service._create_user_message, service._create_short_text_user_message):
+            assert "/no_think" not in build(text="Hirsch", translation_config=config)
