@@ -343,8 +343,8 @@ Keep every other field, both `field_validator`s, and `__str__` exactly as they a
 **Do not add new env vars.** The reference consumer sets these as literals rather than exposing them to configuration, and matching that keeps the two services consistent. Add to the `cls(...)` call in `from_env`:
 
 ```python
-            llm_timeout=60 * 5,
-            llm_max_retries=2,
+llm_timeout = (60 * 5,)
+llm_max_retries = (2,)
 ```
 
 These equal `LlmConfig`'s own defaults, so passing them changes nothing today — they are written out so the intended values are visible at the call site, exactly as `text-mate-backend/src/text_mate_backend/utils/configuration.py` does. If tuning is ever needed, promoting them to env vars is a one-line change then.
@@ -660,12 +660,10 @@ Delete `from dcc_backend_common.usage_tracking import log_llm_call` — the serv
 Inside the chunk loop in `translate_text`, replace the whole `async with ... finally: log_llm_call(stream)` block with:
 
 ```python
-            chunk_translation = ""
-            async for text_part in translation_agent.run_stream_text(
-                user_prompt=user_message, delta=True
-            ):
-                chunk_translation += text_part
-                yield text_part
+chunk_translation = ""
+async for text_part in translation_agent.run_stream_text(user_prompt=user_message, delta=True):
+    chunk_translation += text_part
+    yield text_part
 ```
 
 Leave the surrounding logic untouched: the short-vs-long agent selection, `SHORT_TEXT_WORD_THRESHOLD`, `SHORT_TEXT_SOURCE_LANGUAGE_CONFIDENCE_THRESHOLD`, the `source_language_trustworthy` gate and its `functools.partial`, the `accumulated_context` tail, and both early returns all stay exactly as they are.
@@ -863,8 +861,12 @@ Write up what passed and what did not. **If anything fails, stop and report rath
 def test_user_message_has_no_no_think_marker(self, app_config) -> None:
     service = TranslationService(app_config, TextChunkService(), lambda: MagicMock())
     config = TranslationConfig(
-        target_language=Language.FR, source_language=Language.DE,
-        domain="", tone="", glossary="", context="",
+        target_language=Language.FR,
+        source_language=Language.DE,
+        domain="",
+        tone="",
+        glossary="",
+        context="",
     )
     for build in (service._create_user_message, service._create_short_text_user_message):
         assert "/no_think" not in build(text="Hirsch", translation_config=config)

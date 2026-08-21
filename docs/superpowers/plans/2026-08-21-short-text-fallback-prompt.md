@@ -85,7 +85,7 @@ def test_short_text_user_message_includes_non_empty_metadata_fields(
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/unit/test_translation_service.py::test_short_text_user_message_omits_empty_metadata_fields -v`  
+Run: `uv run pytest tests/unit/test_translation_service.py::test_short_text_user_message_omits_empty_metadata_fields -v`
 Expected: FAIL due to existing empty metadata headers.
 
 - [ ] **Step 3: Implement minimal prompt formatting in `_create_short_text_user_message`**
@@ -129,7 +129,7 @@ Text to translate:
 
 - [ ] **Step 4: Run unit tests to verify they pass**
 
-Run: `uv run pytest tests/unit/test_translation_service.py -k "test_short_text_user_message" -v`  
+Run: `uv run pytest tests/unit/test_translation_service.py -k "test_short_text_user_message" -v`
 Expected: PASS
 
 - [ ] **Step 5: Commit Task 1 changes**
@@ -216,47 +216,45 @@ async def test_explicit_same_source_and_target_still_skips(
 
 - [ ] **Step 2: Run tests to verify failure**
 
-Run: `uv run pytest tests/unit/test_translation_service.py -k "test_auto_source_low_confidence_does_not_skip_when_target_is_german" -v`  
+Run: `uv run pytest tests/unit/test_translation_service.py -k "test_auto_source_low_confidence_does_not_skip_when_target_is_german" -v`
 Expected: FAIL (currently skips and returns `["Hirsch"]` because `source_language` defaults to `Language.DE`).
 
 - [ ] **Step 3: Implement trustworthy detection and skip logic in `translate_text`**
 
 Update `src/bs_translator_backend/services/translation_service.py`:
 ```python
-        use_short_text_agent = _is_short_text(text)
+use_short_text_agent = _is_short_text(text)
 
-        if not config.source_language or config.source_language == DetectLanguage.AUTO:
-            detection_result = detect_language(text)
-            detected_confidence = detection_result.map(lambda result: result.confidence).value_or(
-                0.0
-            )
-            detected = detection_result.map(lambda result: result.language).value_or(None)
+if not config.source_language or config.source_language == DetectLanguage.AUTO:
+    detection_result = detect_language(text)
+    detected_confidence = detection_result.map(lambda result: result.confidence).value_or(0.0)
+    detected = detection_result.map(lambda result: result.language).value_or(None)
 
-            if (
-                detected is not None
-                and not isinstance(detected, DetectLanguage)
-                and (
-                    detected_confidence >= SHORT_TEXT_SOURCE_LANGUAGE_CONFIDENCE_THRESHOLD
-                    if use_short_text_agent
-                    else True
-                )
-            ):
-                config.source_language = detected
-                source_language_trustworthy = True
-            else:
-                source_language_trustworthy = False
-        else:
-            # The caller (i.e. the user, via the UI) explicitly chose this language.
-            source_language_trustworthy = True
+    if (
+        detected is not None
+        and not isinstance(detected, DetectLanguage)
+        and (
+            detected_confidence >= SHORT_TEXT_SOURCE_LANGUAGE_CONFIDENCE_THRESHOLD
+            if use_short_text_agent
+            else True
+        )
+    ):
+        config.source_language = detected
+        source_language_trustworthy = True
+    else:
+        source_language_trustworthy = False
+else:
+    # The caller (i.e. the user, via the UI) explicitly chose this language.
+    source_language_trustworthy = True
 
-        if source_language_trustworthy and config.source_language == config.target_language:
-            yield text
-            return
+if source_language_trustworthy and config.source_language == config.target_language:
+    yield text
+    return
 ```
 
 - [ ] **Step 4: Run unit tests to verify they pass**
 
-Run: `uv run pytest tests/unit/test_translation_service.py -v`  
+Run: `uv run pytest tests/unit/test_translation_service.py -v`
 Expected: ALL PASS
 
 - [ ] **Step 5: Commit Task 2 changes**
@@ -312,7 +310,7 @@ Add to `tests/e2e/test_translation_routes.py` under `TestPromptRouting`:
 
 - [ ] **Step 2: Run e2e tests**
 
-Run: `uv run pytest tests/e2e/test_translation_routes.py -v`  
+Run: `uv run pytest tests/e2e/test_translation_routes.py -v`
 Expected: ALL PASS
 
 - [ ] **Step 3: Run full test suite and linters**

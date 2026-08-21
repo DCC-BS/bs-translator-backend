@@ -1,7 +1,7 @@
 # Design Specification: Short Text Minimal Translation Prompt Fallback
 
-**Date:** 2026-08-21  
-**Status:** Approved  
+**Date:** 2026-08-21
+**Status:** Approved
 
 ## Overview
 When translating short text inputs (1-3 words) where the source language is set to `auto` (or `None`), language detection is frequently unreliable or fails. Previously, the backend defaulted `source_language` to German (`Language.DE`). When the target language was also German (`Language.DE`), this caused a false-positive match on the `source_language == target_language` check, causing the backend to return the original text without translating it.

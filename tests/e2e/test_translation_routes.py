@@ -191,6 +191,37 @@ class TestPromptRouting:
         assert "Translate the following text into French." in user_message
         assert "from German" not in user_message
 
+    @pytest.mark.asyncio
+    async def test_short_input_auto_source_translating_into_german_uses_fallback_prompt(
+        self, client: httpx.AsyncClient, fake_llm: FakeLLM
+    ) -> None:
+        fake_llm.respond_with("Hallo")
+
+        chunks: list[str] = []
+        async with client.stream(
+            "POST",
+            "/translation/text",
+            json={
+                "text": "hi",
+                "config": {"source_language": "auto", "target_language": "de"},
+            },
+            headers=CLIENT_HEADERS,
+        ) as response:
+            assert response.status_code == 200
+            async for chunk in response.aiter_text():
+                chunks.append(chunk)
+
+        assert "".join(chunks) == "Hallo"
+        assert len(fake_llm.requests) == 1
+        body = fake_llm.last_body()
+        system_prompt = fake_llm.system_prompt(body)
+        user_message = fake_llm.user_message(body)
+
+        assert "dictionary-style lookup" in system_prompt
+        assert "Translate the following text into German." in user_message
+        assert "from" not in user_message.split("\n", 1)[0]
+        assert "hi" in user_message
+
 
 class TestErrorPaths:
     """The stub LLM returns an HTTP error; the failure must not hang the
