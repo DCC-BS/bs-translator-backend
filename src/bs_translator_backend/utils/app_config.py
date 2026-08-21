@@ -8,7 +8,7 @@ from pydantic import Field, field_validator
 class AppConfig(LlmConfig):
     reasoning: bool = Field(
         default=False,
-        description="Enable LLM reasoning; when false, disable with /no_think hint",
+        description="Enable LLM reasoning; forwarded to the LLM agent enable_thinking setting",
     )
     client_url: str = Field(description="The URL for the client application")
     docling_url: str = Field(description="The URL for the Docling service")

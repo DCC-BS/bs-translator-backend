@@ -8,24 +8,22 @@ transport is faked, via ``httpx.MockTransport``.
 
 How the stub is wired in
 -------------------------
-``TranslationService.__init__`` builds two pydantic-ai agents via
-``agents.translation_agent.create_translation_agent`` /
-``create_short_text_translation_agent``, which both call
-``_create_translation_model``. That helper constructs a real
-``openai.AsyncOpenAI`` client:
+``TranslationService.__init__`` builds two translation agents (``TranslationAgent``
+and ``ShortTextTranslationAgent``) subclassing ``BaseAgent``, which constructs
+a real ``openai.AsyncOpenAI`` client:
 
-    client = AsyncOpenAI(max_retries=3, base_url=app_config.llm_url, api_key=app_config.llm_api_key)
+    client = AsyncOpenAI(max_retries=..., base_url=app_config.llm_url, api_key=app_config.llm_api_key, ...)
 
 There is no parameter to inject a custom transport, and none was added --
 instead, the ``AsyncOpenAI`` name imported into
-``bs_translator_backend.agents.translation_agent`` is monkeypatched (see
+``dcc_backend_common.llm_agent.base_agent`` is monkeypatched (see
 ``fake_llm`` below) to a factory that forwards to the *real* ``openai.AsyncOpenAI``
 class, adding only ``http_client=httpx.AsyncClient(transport=httpx.MockTransport(...))``.
-Production code is unmodified: `_create_translation_model` runs exactly as
-shipped and ends up holding a genuine ``AsyncOpenAI`` instance -- just one
-whose socket is replaced by an in-process handler. Every layer above that
-(pydantic-ai's `OpenAIChatModel`, the OpenAI SDK's request building and SSE
-parsing, `TranslationService`, and the FastAPI routers) executes for real.
+Production code is unmodified: ``BaseAgent`` runs exactly as shipped and ends up
+holding a genuine ``AsyncOpenAI`` instance -- just one whose socket is replaced
+by an in-process handler. Every layer above that (pydantic-ai's ``OpenAIChatModel``,
+the OpenAI SDK's request building and SSE parsing, ``TranslationService``, and the
+FastAPI routers) executes for real.
 
 Env vars and import-time config
 --------------------------------

@@ -46,6 +46,13 @@ class TestAgentConstruction:
         assert TRANSLATION_INSTRUCTION != SHORT_TEXT_TRANSLATION_INSTRUCTION
         assert "lexical" in SHORT_TEXT_TRANSLATION_INSTRUCTION.lower()
 
+    def test_agents_use_eszett_postprocessor_without_trim(self, app_config: AppConfig) -> None:
+        from dcc_backend_common.llm_agent.postprocessing import replace_eszett
+
+        for agent_cls in (TranslationAgent, ShortTextTranslationAgent):
+            agent = agent_cls(app_config)
+            assert agent._get_postprocessors() == [replace_eszett]
+
     @pytest.mark.asyncio
     async def test_agents_expose_close(self, app_config: AppConfig) -> None:
         agent = TranslationAgent(app_config)
