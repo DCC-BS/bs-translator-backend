@@ -21,7 +21,7 @@ dependencies = [
     "returns>=0.26.0",
     "structlog>=25.1.0",
     "pydantic-ai>=2.7.0",
-    "dcc-backend-common>=0.1.18",
+    "dcc-backend-common[fastapi,pydantic-ai]>=0.1.23",
     "fast-langdetect>=1.0.0",
 ]
 
