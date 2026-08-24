@@ -156,7 +156,13 @@ Text to translate:
 
         use_short_text_agent = _is_short_text(text)
 
-        if not config.source_language or config.source_language == DetectLanguage.AUTO:
+        # Resolved locally rather than written back onto `config`: the caller owns
+        # that object, and `translate_image` reuses one config across every text
+        # segment - mutating it would leak the first segment's detected language
+        # into all the others.
+        source_language = config.source_language
+
+        if not source_language or source_language == DetectLanguage.AUTO:
             detection_result = detect_language(text)
             detected_confidence = detection_result.map(lambda result: result.confidence).value_or(
                 0.0
@@ -172,7 +178,7 @@ Text to translate:
                     else True
                 )
             ):
-                config.source_language = detected
+                source_language = detected
                 source_language_trustworthy = True
             else:
                 source_language_trustworthy = False
@@ -180,7 +186,7 @@ Text to translate:
             # The caller (i.e. the user, via the UI) explicitly chose this language.
             source_language_trustworthy = True
 
-        if source_language_trustworthy and config.source_language == config.target_language:
+        if source_language_trustworthy and source_language == config.target_language:
             yield text
             return
 
@@ -202,7 +208,7 @@ Text to translate:
         for text_chunk in text_chunks:
             chunk_config = TranslationConfig(
                 target_language=config.target_language,
-                source_language=config.source_language,
+                source_language=source_language,
                 domain=config.domain,
                 tone=config.tone,
                 glossary=config.glossary,

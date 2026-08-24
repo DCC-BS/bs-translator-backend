@@ -19,9 +19,11 @@ disabled the first time it flaked.
 from __future__ import annotations
 
 import os
+from collections.abc import AsyncIterator
 from unittest.mock import MagicMock
 
 import pytest
+import pytest_asyncio
 
 from bs_translator_backend.models.language import Language
 from bs_translator_backend.models.translation import TranslationConfig
@@ -35,6 +37,8 @@ from bs_translator_backend.utils.app_config import AppConfig
 # forgot to supply one would otherwise point at these placeholders and fail with a
 # confusing connection error instead of a clear skip.
 _PLACEHOLDER_HOST = ".invalid"
+_PLACEHOLDER_API_KEY = "test-llm-key"
+_PLACEHOLDER_MODEL = "test/test-model"
 
 pytestmark = pytest.mark.live
 
@@ -50,14 +54,20 @@ def _live_config() -> AppConfig:
             f"LLM_URL is unset or still the test placeholder ({llm_url!r}); "
             "supply a real endpoint, e.g. via --env-file .env"
         )
+    if os.getenv("LLM_API_KEY", "") in ("", _PLACEHOLDER_API_KEY):
+        pytest.skip("LLM_API_KEY is unset or still the test placeholder; supply a real key")
+    if os.getenv("LLM_MODEL", "") in ("", _PLACEHOLDER_MODEL):
+        pytest.skip("LLM_MODEL is unset or still the test placeholder; supply a real model")
 
     return AppConfig.from_env()
 
 
-@pytest.fixture
-def translation_service() -> TranslationService:
+@pytest_asyncio.fixture
+async def translation_service() -> AsyncIterator[TranslationService]:
     """A TranslationService wired to the real LLM. Docling is never reached here."""
-    return TranslationService(_live_config(), TextChunkService(), lambda: MagicMock())
+    service = TranslationService(_live_config(), TextChunkService(), lambda: MagicMock())
+    yield service
+    await service.aclose()
 
 
 async def _translate(service: TranslationService, text: str, config: TranslationConfig) -> str:

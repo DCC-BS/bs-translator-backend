@@ -221,6 +221,23 @@ async def test_auto_source_high_confidence_detection_is_asserted_in_short_text_p
 
 
 @pytest.mark.asyncio
+async def test_auto_detection_does_not_mutate_the_callers_config(
+    translation_service: TranslationService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The caller owns the config: `translate_image` reuses one across every text
+    segment, so a detected language must not leak out of a single call."""
+    monkeypatch.setattr(
+        "bs_translator_backend.services.translation_service.detect_language",
+        lambda _text: Success(DetectLanguageOutput(language=Language.DE, confidence=0.96)),
+    )
+    config = TranslationConfig(source_language=DetectLanguage.AUTO, target_language=Language.FR)
+
+    [c async for c in translation_service.translate_text("Der Hirsch", config)]
+
+    assert config.source_language == DetectLanguage.AUTO
+
+
+@pytest.mark.asyncio
 async def test_auto_source_low_confidence_detection_is_not_asserted_in_short_text_prompt(
     translation_service: TranslationService, monkeypatch: pytest.MonkeyPatch
 ) -> None:

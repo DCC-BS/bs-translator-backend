@@ -87,10 +87,12 @@ def app_config() -> AppConfig:
 
 
 def _sse_event(payload: dict) -> bytes:
+    """Encode one payload as an SSE `data:` frame, as the LLM endpoint would."""
     return f"data: {json.dumps(payload)}\n\n".encode()
 
 
 def _chunk(*, chunk_id: str, model: str, delta: dict, finish_reason: str | None) -> dict:
+    """Build one OpenAI `chat.completion.chunk` body."""
     return {
         "id": chunk_id,
         "object": "chat.completion.chunk",
@@ -222,9 +224,16 @@ def built_app(app_config: AppConfig, fake_llm: FakeLLM) -> FastAPI:
 
 @pytest_asyncio.fixture
 async def client(built_app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
-    """An ASGI-backed httpx client for the real app, real routers included."""
+    """An ASGI-backed httpx client for the real app, real routers included.
+
+    The app's lifespan runs around the requests so shutdown (which closes the
+    agents' HTTP clients) is exercised too.
+    """
     transport = httpx.ASGITransport(app=built_app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
+    async with (
+        built_app.router.lifespan_context(built_app),
+        httpx.AsyncClient(transport=transport, base_url="http://test") as ac,
+    ):
         yield ac
 
 
