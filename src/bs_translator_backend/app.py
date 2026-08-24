@@ -1,3 +1,6 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from dcc_backend_common.fastapi_health_probes import health_probe_router
 from dcc_backend_common.fastapi_health_probes.router import ServiceDependency
 from dcc_backend_common.fastapi_logging_middleware import add_logging_middleware
@@ -14,6 +17,15 @@ from bs_translator_backend.routers import convert_route, transcription_route, tr
 from bs_translator_backend.utils.app_config import AppConfig
 
 
+@asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Release the LLM clients' connection pools on shutdown."""
+    yield
+    container: Container | None = getattr(app.state, "container", None)
+    if container is not None:
+        await container.translation_service().aclose()
+
+
 def _build_fastapi_app() -> FastAPI:
     """
     Instantiate the FastAPI application with metadata and lifespan.
@@ -24,6 +36,7 @@ def _build_fastapi_app() -> FastAPI:
         version="0.1.0",
         docs_url="/docs",
         redoc_url="/redoc",
+        lifespan=_lifespan,
     )
 
     return app

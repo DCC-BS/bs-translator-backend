@@ -95,3 +95,8 @@ class TestGetLanguageName:
             name = get_language_name(language)
             assert isinstance(name, str)
             assert len(name) > 0
+
+    def test_get_language_name_for_serbian(self) -> None:
+        """Test that Serbian is wired up end to end as a single Cyrillic-default entry."""
+        assert Language.SR.value == "sr"
+        assert get_language_name(Language.SR) == "Serbian"

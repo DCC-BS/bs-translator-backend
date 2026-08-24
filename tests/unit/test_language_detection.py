@@ -19,6 +19,7 @@ from bs_translator_backend.utils.language_detection import (
         ("zh-tw", Language.ZH_TW),
         ("pt", Language.PT),
         ("pt-br", Language.PT),
+        ("sr", Language.SR),
     ],
 )
 def test_regional_aliases_map_to_a_language(code: str, expected: Language) -> None:

@@ -1,49 +1,67 @@
+from pathlib import Path
+
 import pytest
-from pydantic_ai import ModelRequest, ModelResponse
-from pydantic_ai.messages import TextPart
+from dcc_backend_common.llm_agent import BaseAgent
 
+import bs_translator_backend.agents.translation_agent as mod
 from bs_translator_backend.agents.translation_agent import (
-    keep_recent_message,
-    transform_to_swissgerman_style,
+    ShortTextTranslationAgent,
+    TranslationAgent,
 )
+from bs_translator_backend.utils.app_config import AppConfig
 
 
-class TestTransformToSwissgermanStyle:
-    def test_replaces_eszett_with_double_s(self):
-        assert transform_to_swissgerman_style("große") == "grosse"
-
-    def test_replaces_multiple_eszett(self):
-        assert transform_to_swissgerman_style("große Straße") == "grosse Strasse"
-
-    def test_preserves_text_without_eszett(self):
-        assert transform_to_swissgerman_style("hello world") == "hello world"
-
-    def test_handles_empty_string(self):
-        assert transform_to_swissgerman_style("") == ""
-
-    def test_handles_only_eszett(self):
-        assert transform_to_swissgerman_style("ß") == "ss"
+@pytest.fixture
+def app_config() -> AppConfig:
+    return AppConfig(
+        llm_url="http://localhost:8001/v1",
+        llm_api_key="none",
+        llm_model="test/test-model",
+        client_url="http://localhost:3000",
+        docling_url="http://localhost:8004/v1",
+        docling_api_key="none",
+        hmac_secret="test-secret",  # noqa: S106
+        whisper_url="http://localhost:50001/v1",
+    )
 
 
-class TestKeepRecentMessage:
+class TestAgentConstruction:
+    def test_translation_agent_is_a_base_agent(self, app_config: AppConfig) -> None:
+        assert issubclass(TranslationAgent, BaseAgent)
+
+    def test_short_text_agent_is_a_base_agent(self, app_config: AppConfig) -> None:
+        assert issubclass(ShortTextTranslationAgent, BaseAgent)
+
+    def test_agents_construct_from_app_config(self, app_config: AppConfig) -> None:
+        assert TranslationAgent(app_config) is not None
+        assert ShortTextTranslationAgent(app_config) is not None
+
+    def test_agents_carry_distinct_instructions(self) -> None:
+        """The whole point of the short agent is a different prompt."""
+        from bs_translator_backend.agents.translation_agent import (
+            SHORT_TEXT_TRANSLATION_INSTRUCTION,
+            TRANSLATION_INSTRUCTION,
+        )
+
+        assert TRANSLATION_INSTRUCTION != SHORT_TEXT_TRANSLATION_INSTRUCTION
+        assert "lexical" in SHORT_TEXT_TRANSLATION_INSTRUCTION.lower()
+
+    def test_agents_use_eszett_postprocessor_without_trim(self, app_config: AppConfig) -> None:
+        from dcc_backend_common.llm_agent.postprocessing import replace_eszett
+
+        for agent_cls in (TranslationAgent, ShortTextTranslationAgent):
+            agent = agent_cls(app_config)
+            assert agent._get_postprocessors() == [replace_eszett]
+
     @pytest.mark.asyncio
-    async def test_keeps_single_message(self):
-        msg1 = ModelRequest.user_text_prompt("msg1")
-        messages = [msg1]
-        result = await keep_recent_message(messages)
-        assert result == [msg1]
+    async def test_agents_expose_close(self, app_config: AppConfig) -> None:
+        agent = TranslationAgent(app_config)
+        await agent.close()
 
-    @pytest.mark.asyncio
-    async def test_keeps_only_last_message_when_multiple(self):
-        msg1 = ModelRequest.user_text_prompt("msg1")
-        msg2 = ModelResponse(parts=[TextPart(content="msg2")])
-        msg3 = ModelRequest.user_text_prompt("msg3")
-        messages = [msg1, msg2, msg3]
-        result = await keep_recent_message(messages)
-        assert result == [msg3]
 
-    @pytest.mark.asyncio
-    async def test_returns_empty_list_for_empty_input(self):
-        messages: list[ModelRequest | ModelResponse] = []
-        result = await keep_recent_message(messages)
-        assert result == []
+class TestNoDirectSdkUsage:
+    def test_module_does_not_import_openai(self) -> None:
+        """The openai SDK is not a declared dependency; it must not be imported."""
+        source = Path(mod.__file__).read_text()
+        assert "import openai" not in source
+        assert "from openai" not in source

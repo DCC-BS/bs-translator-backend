@@ -1,16 +1,14 @@
 import os
 
-from dcc_backend_common.config import AbstractAppConfig, get_env_or_throw, log_secret
+from dcc_backend_common.config import get_env_or_throw, log_secret
+from dcc_backend_common.config.app_config import LlmConfig
 from pydantic import Field, field_validator
 
 
-class AppConfig(AbstractAppConfig):
-    llm_url: str = Field(description="The base URL for the LLM API")
-    llm_api_key: str = Field(description="The API key for authenticating with the LLM API")
-    llm_model: str = Field(description="The language model to use for text generation")
+class AppConfig(LlmConfig):
     reasoning: bool = Field(
         default=False,
-        description="Enable LLM reasoning; when false, disable with /no_think hint",
+        description="Enable LLM reasoning; forwarded to the LLM agent enable_thinking setting",
     )
     client_url: str = Field(description="The URL for the client application")
     docling_url: str = Field(description="The URL for the Docling service")
@@ -57,6 +55,8 @@ class AppConfig(AbstractAppConfig):
             llm_url=llm_url,
             llm_api_key=llm_api_key,
             llm_model=llm_model,
+            llm_timeout=60 * 5,
+            llm_max_retries=2,
             reasoning=reasoning,
             client_url=client_url,
             docling_url=docling_url,
