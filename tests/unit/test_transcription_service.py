@@ -60,7 +60,7 @@ def config() -> AppConfig:
         client_url="http://client",
         docling_url="http://docling",
         docling_api_key="test-key",
-        hmac_secret="secret",  # noqa: S106
+        hmac_secret="secret",
         whisper_url=_WHISPER_URL,
     )
 

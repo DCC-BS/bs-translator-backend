@@ -55,7 +55,7 @@ def config() -> AppConfig:
         client_url="http://client",
         docling_url=_DOCLING_URL,
         docling_api_key="test-key",
-        hmac_secret="secret",  # noqa: S106
+        hmac_secret="secret",
         whisper_url="http://whisper",
         docling_poll_interval=0.001,  # minimal sleep; patched to no-op where needed
         docling_task_timeout=600.0,
