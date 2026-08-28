@@ -11,3 +11,7 @@ tests
 .venv
 .pytest_cache
 .ruff_cache
+publiccode.yml
+renovate.json
+docker-compose.yml
+Dockerfile
