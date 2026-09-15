@@ -20,7 +20,7 @@ def app_config() -> AppConfig:
         client_url="http://localhost:3000",
         docling_url="http://localhost:8004/v1",
         docling_api_key="none",
-        hmac_secret="test-secret",  # noqa: S106
+        hmac_secret="test-secret",
         whisper_url="http://localhost:50001/v1",
     )
 
