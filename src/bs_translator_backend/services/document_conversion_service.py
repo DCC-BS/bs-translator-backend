@@ -295,13 +295,15 @@ class DocumentConversionService:
         await self._poll_task(task_id)
         return await self._fetch_result(task_id)
 
-    async def convert_to_docling(
+    async def _docling_convert(
         self,
         file: UploadFile | BytesIO,
         source_lang: LanguageOrAuto,
-        filename: str | None = None,
-        content_type: str | None = None,
-    ) -> DoclingDocument:
+        filename: str | None,
+        content_type: str | None,
+        logger_context: str,
+        docling_options: dict[str, str | list[str] | bool] = {},
+    ) -> DocumentResponse:
         languages = [source_lang.value]
 
         if source_lang == DetectLanguage.AUTO:
@@ -317,16 +319,35 @@ class DocumentConversionService:
             "image_export_mode": "embedded",
             "do_ocr": True,
             "images_scale": "1",
-            "ocr_engine": "easyocr",
             "ocr_lang": languages,
             "table_mode": "accurate",
-            "pdf_backend": "pypdfium2",
-        }
+            "pdf_backend": "docling_parse",
+            "ocr_preset": "rapidocr",
+            "ocr_lang": ["de"],
+        } | docling_options
 
         response = await self.fetch_docling_file_convert(files, options)
         document = extract_docling_document(
-            self._parse_json(response, "convert_to_docling result"),
+            self._parse_json(response, logger_context),
             logger_context={"options": options, "content_type": content_type},
+        )
+
+        return document
+
+    async def convert_to_docling(
+        self,
+        file: UploadFile | BytesIO,
+        source_lang: LanguageOrAuto,
+        filename: str | None = None,
+        content_type: str | None = None,
+    ) -> DoclingDocument:
+        document = await self._docling_convert(
+            file,
+            source_lang,
+            filename,
+            content_type,
+            "convert_to_docling result",
+            {"to_formats": ["json"]},
         )
 
         if isinstance(document.json_content, dict):
@@ -341,33 +362,16 @@ class DocumentConversionService:
         filename: str | None = None,
         content_type: str | None = None,
     ) -> ConversionResult:
-        languages = [source_lang.value]
-
-        if source_lang == DetectLanguage.AUTO:
-            languages = ["de", "en", "fr", "it"]
-
-        logger.debug("Resolving input file", file_type=type(file).__name__)
-        content, filename, content_type = self._resolve_file(file, filename, content_type)
-
-        files = {"files": (filename, BytesIO(content), content_type)}
-        options: dict[str, str | list[str] | bool] = {
-            "images_scale": "1",
-            "to_formats": ["md", "json"],
-            "image_export_mode": "embedded",
-            "do_ocr": True,
-            "ocr_engine": "easyocr",
-            "ocr_lang": languages,
-            "table_mode": "accurate",
-            "pdf_backend": "pypdfium2",
-        }
-
-        response = await self.fetch_docling_file_convert(files, options)
-        docling_response = extract_docling_document(
-            self._parse_json(response, "convert result"),
-            logger_context={"options": options, "content_type": content_type},
+        document = await self._docling_convert(
+            file,
+            source_lang,
+            filename,
+            content_type,
+            "convert result",
+            {"to_formats": ["md", "json"]},
         )
 
-        markdown = docling_response.md_content or ""
+        markdown = document.md_content or ""
         images: dict[int, Base64EncodedImage] = {}
 
         base64_pattern = r"!\[.*?\]\(data:image/[^;]+;base64,([^)]+)\)"

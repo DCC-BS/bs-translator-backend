@@ -99,4 +99,4 @@ run = "docker compose down"
 [tasks."docker:logs"]
 description = "Tail docker compose logs (follow mode)"
 alias = "logs"
-run = "docker compose logs -f"
+run = "varlock run -- docker compose logs -f"
