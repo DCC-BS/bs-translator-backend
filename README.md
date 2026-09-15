@@ -49,8 +49,8 @@ For local development, create a `.env` file in the project root:
 
 ```env
 # Hugging Face Configuration (optional)
-HUGGING_FACE_HUB_TOKEN=your_hugging_face_token_here
-HUGGING_FACE_CACHE_DIR=~/.cache/huggingface
+HF_TOKEN=your_hugging_face_token_here
+HF_HOME=~/.cache/huggingface
 
 # LLM Service Configuration (vLLM/OpenAI-compatible)
 LLM_API_PORT=8001
@@ -69,7 +69,7 @@ DOCLING_URL='http://localhost:8004/v1'
 WHISPER_URL='http://localhost:50001/v1'
 ```
 
-> **Note:** The `HUGGING_FACE_HUB_TOKEN` is required for Hugging Face API access and model downloads; you can create a token [here](https://huggingface.co/settings/tokens). Set `LLM_REASONING=true` to enable extended reasoning/thinking in the LLM responses.
+> **Note:** The `HF_TOKEN` is required for Hugging Face API access and model downloads; you can create a token [here](https://huggingface.co/settings/tokens). Set `LLM_REASONING=true` to enable extended reasoning/thinking in the LLM responses.
 
 ### Install Dependencies
 

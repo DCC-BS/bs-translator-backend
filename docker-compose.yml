@@ -6,7 +6,7 @@ services:
     ports:
       - ${LLM_API_PORT}:8000
     environment:
-      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
+      - HF_TOKEN=${HF_TOKEN:-}
       - LD_LIBRARY_PATH=/lib/x86_64-linux-gnu
     runtime: nvidia
     deploy:
@@ -18,7 +18,7 @@ services:
               capabilities: [gpu]
     ipc: host
     volumes:
-      - ${HUGGING_FACE_CACHE_DIR}:/root/.cache/huggingface
+      - ${HF_HOME:-${HOME:-/root}/.cache/huggingface}:/root/.cache/huggingface
     command: >
         --port 8000
         --model RedHatAI/gemma-4-31B-it-NVFP4
@@ -59,7 +59,7 @@ services:
   #     - MAX_CONCURRENCY
   #     - MAX_BATCH_SIZE
   #     - MAX_LATENCY_MS
-  #     - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
+  #     - HF_TOKEN=${HF_TOKEN:-}
   #   volumes:
   #     - hugging_face_cache:/root/.cache/huggingface
   #   deploy:
@@ -103,7 +103,7 @@ services:
   #   ports:
   #     - ${OCR_API_PORT}:8005
   #   environment:
-  #     - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
+  #     - HF_TOKEN=${HF_TOKEN:-}
   #   deploy:
   #     resources:
   #       reservations:
@@ -113,7 +113,7 @@ services:
   #             capabilities: [gpu]
   #   ipc: host
   #   volumes:
-  #     - ${HUGGING_FACE_CACHE_DIR}:/root/.cache/huggingface
+  #     - ${HF_HOME:-${HOME:-/root}/.cache/huggingface}:/root/.cache/huggingface
   #   command: >
   #     rednote-hilab/dots.ocr
   #     --port 8005
