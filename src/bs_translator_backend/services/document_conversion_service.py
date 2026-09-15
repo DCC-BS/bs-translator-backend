@@ -302,7 +302,7 @@ class DocumentConversionService:
         filename: str | None,
         content_type: str | None,
         logger_context: str,
-        docling_options: dict[str, str | list[str] | bool] = {},
+        docling_options: dict[str, str | list[str] | bool],
     ) -> DocumentResponse:
         languages = [source_lang.value]
 
@@ -323,7 +323,6 @@ class DocumentConversionService:
             "table_mode": "accurate",
             "pdf_backend": "docling_parse",
             "ocr_preset": "rapidocr",
-            "ocr_lang": ["de"],
         } | docling_options
 
         response = await self.fetch_docling_file_convert(files, options)
