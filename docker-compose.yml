@@ -1,7 +1,7 @@
 services:
   vllm_gemma4:
     platform: linux/amd64
-    image: vllm/vllm-openai:v0.27.1
+    image: vllm/vllm-openai:v0.30.0
     container_name: vllm_gemma
     ports:
       - ${LLM_API_PORT}:8000
@@ -71,7 +71,7 @@ services:
   #             device_ids: ["0"]
   #             # capabilities: [gpu]
   docling-serve-translator:
-    image: ghcr.io/dcc-bs/dcc-docling-serve-cu130:latest
+    image: ghcr.io/dcc-bs/dcc-docling-serve-cu130:v1.36.0
     container_name: docling-serve-translator
     runtime: nvidia
     deploy:
