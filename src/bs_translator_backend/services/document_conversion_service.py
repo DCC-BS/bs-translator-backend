@@ -323,6 +323,7 @@ class DocumentConversionService:
             "table_mode": "accurate",
             "pdf_backend": "docling_parse",
             "ocr_preset": "rapidocr",
+            "md_compact_tables": True,
         } | docling_options
 
         response = await self.fetch_docling_file_convert(files, options)
