@@ -196,7 +196,7 @@ wheels = [
 
 [[package]]
 name = "bs-translator-backend"
-version = "1.5.3"
+version = "1.5.4"
 source = { editable = "." }
 dependencies = [
     { name = "dcc-backend-common", extra = ["fastapi", "pydantic-ai"] },
