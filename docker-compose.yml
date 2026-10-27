@@ -1,7 +1,7 @@
 services:
   vllm_gemma4:
     platform: linux/amd64
-    image: vllm/vllm-openai:v0.30.0
+    image: vllm/vllm-openai:v0.32.0
     container_name: vllm_gemma
     ports:
       - ${LLM_API_PORT}:8000
@@ -98,7 +98,7 @@ services:
       start_period: 60s
   # dots-ocr-translator:
   #   platform: linux/amd64
-  #   image: vllm/vllm-openai:v0.12.0
+  #   image: vllm/vllm-openai:v0.32.0
   #   container_name: vllm-dots-ocr-translator
   #   ports:
   #     - ${OCR_API_PORT}:8005
