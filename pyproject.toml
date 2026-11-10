@@ -120,7 +120,4 @@ force-wrap-aliases = true
 # Supply-chain cooldown: uv only uses distributions uploaded at least 7 days ago.
 exclude-newer = "P7D"
 # dcc-backend-common: our own package(s), always current (permanent).
-# TEMPORARY until 2026-11-03: pyasn1 skip the cooldown (P0D) so the locked security fixes
-# aren't downgraded: pyasn1 0.6.5 (GHSA-2qm8-x737-gmw5, uploaded 2026-10-27).
-# The weekly dependency routine removes these entries once the locked versions are 7 days old.
-exclude-newer-package = { dcc-backend-common = "P0D", pyasn1 = "P0D" }
+exclude-newer-package = { dcc-backend-common = "P0D" }
