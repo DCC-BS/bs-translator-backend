@@ -22,7 +22,9 @@ from bs_translator_backend.services.translation_service import TranslationServic
 logger = get_logger(__name__)
 
 
-async def _peek_first[T](source: AsyncGenerator[T, None]) -> tuple[T, AsyncGenerator[T, None]] | None:
+async def _peek_first[T](
+    source: AsyncGenerator[T, None],
+) -> tuple[T, AsyncGenerator[T, None]] | None:
     """Pull the first item out of `source`, handing back a generator that still yields it.
 
     Awaiting the first item here - before the route returns a `StreamingResponse` - means

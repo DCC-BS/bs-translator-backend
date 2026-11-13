@@ -42,6 +42,7 @@ class _TranslationBaseAgent(BaseAgent[None, str]):
         except _LLM_UNAVAILABLE_ERRORS as e:
             raise TranslationUnavailableError(str(e)) from e
 
+
 TRANSLATION_INSTRUCTION = """
 You are a senior translator and terminologist for the Cantonal Administration of Basel-Stadt in Switzerland.
 Translate source_text from source_language into target_language and output translated_text only.

@@ -350,7 +350,9 @@ async def test_long_path_prompt_never_mentions_source_language(
 
     [c async for c in translation_service.translate_text(text, config)]
 
-    prompt = translation_service.translation_agent.run_stream_text_safe.call_args.kwargs["user_prompt"]
+    prompt = translation_service.translation_agent.run_stream_text_safe.call_args.kwargs[
+        "user_prompt"
+    ]
     assert "Translate the following text into French." in prompt
     assert "from" not in prompt.split("\n", 1)[0]
 
