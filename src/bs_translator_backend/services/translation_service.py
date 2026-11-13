@@ -11,13 +11,17 @@ from functools import partial
 from io import BytesIO
 from typing import final
 
-from fastapi import UploadFile
+from dcc_backend_common.logger import get_logger
+from fastapi import UploadFile, status
 
+from bs_translator_backend.agents.errors import TranslationUnavailableError
 from bs_translator_backend.agents.translation_agent import (
     ShortTextTranslationAgent,
     TranslationAgent,
 )
 from bs_translator_backend.models.conversion_result import BBox, ConversionImageTextEntry
+from bs_translator_backend.models.error_codes import TRANSLATION_SERVICE_UNAVAILABLE
+from bs_translator_backend.models.error_response import ApiErrorException
 from bs_translator_backend.models.language import DetectLanguage, Language, get_language_name
 from bs_translator_backend.models.translation import (
     DetectLanguageInput,
@@ -28,6 +32,8 @@ from bs_translator_backend.services.document_conversion_service import DocumentC
 from bs_translator_backend.services.text_chunk_service import TextChunkService
 from bs_translator_backend.utils.app_config import AppConfig
 from bs_translator_backend.utils.language_detection import detect_language
+
+logger = get_logger(__name__)
 
 # Inputs at or below this many words are treated as dictionary/lexical lookups
 # (e.g. "Hirsch", "Der Hirsch") and routed to the short-text translation agent,
@@ -222,11 +228,23 @@ Text to translate:
                 translation_config=chunk_config,
             )
             chunk_translation = ""
-            async for text_part in translation_agent.run_stream_text(
-                user_prompt=user_message, delta=True
-            ):
-                chunk_translation += text_part
-                yield text_part
+            try:
+                async for text_part in translation_agent.run_stream_text_safe(
+                    user_prompt=user_message, delta=True
+                ):
+                    chunk_translation += text_part
+                    yield text_part
+            except TranslationUnavailableError as e:
+                logger.exception(
+                    "Translation LLM call failed",
+                    target_language=config.target_language.value,
+                    use_short_text_agent=use_short_text_agent,
+                )
+                raise ApiErrorException({
+                    "errorId": TRANSLATION_SERVICE_UNAVAILABLE,
+                    "status": status.HTTP_503_SERVICE_UNAVAILABLE,
+                    "debugMessage": f"Translation service is currently unavailable: {e!s}",
+                }) from e
 
             # Accumulate context for next chunk (keep last ~500 chars for context)
             accumulated_context = (accumulated_context + chunk_translation)[-500:]

@@ -228,9 +228,17 @@ class TestErrorPaths:
     request and must not be silently swallowed."""
 
     @pytest.mark.asyncio
-    async def test_llm_http_error_does_not_hang_and_is_not_silently_swallowed(
+    async def test_llm_http_error_on_first_chunk_returns_clean_503(
         self, client: httpx.AsyncClient, fake_llm: FakeLLM
     ) -> None:
+        """`StreamingResponse` commits its 200 status as soon as the ASGI app is
+        called, before the body generator runs - so once streaming has started,
+        an LLM failure cannot change the status code. The route works around
+        this for the common case (the LLM is already down/overloaded before
+        the first chunk) by awaiting that first chunk before constructing the
+        `StreamingResponse`, so a failure there still becomes a normal,
+        bounded-time JSON error response instead of a broken connection.
+        """
         fake_llm.fail(status_code=500, message="upstream boom")
 
         async def make_request() -> httpx.Response:
@@ -243,17 +251,9 @@ class TestErrorPaths:
                 headers=CLIENT_HEADERS,
             )
 
-        # `StreamingResponse` commits its 200 status as soon as the ASGI app is
-        # called, before the body generator runs -- so an LLM failure during
-        # streaming cannot change the status code. The observable, current
-        # behaviour is that the failure propagates as a raised exception
-        # through the ASGI transport (matching what a real ASGI server would
-        # see: the connection breaks rather than the client receiving a wrong
-        # "200 OK, translation succeeded"). The important properties this
-        # test protects are: (a) no hang -- bounded by the timeout below, and
-        # (b) not a quiet, unnoticed failure -- the exception carries the
-        # upstream status.
-        with pytest.raises(Exception) as exc_info:
-            await asyncio.wait_for(make_request(), timeout=5.0)
+        response = await asyncio.wait_for(make_request(), timeout=5.0)
 
-        assert "500" in str(exc_info.value)
+        assert response.status_code == 503
+        body = response.json()
+        assert body["errorId"] == "translation_service_unavailable"
+        assert "500" in body["debugMessage"]

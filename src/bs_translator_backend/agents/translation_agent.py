@@ -6,14 +6,41 @@ models — stays free of it. The openai SDK is never imported here; BaseAgent ow
 construction, retries, and timeouts.
 """
 
+from collections.abc import AsyncGenerator
 from typing import override
 
+import httpx
 from dcc_backend_common.llm_agent import BaseAgent, Preprocessor
 from dcc_backend_common.llm_agent.postprocessing import replace_eszett
 from pydantic_ai import Agent
+from pydantic_ai.exceptions import AgentRunError
 from pydantic_ai.models import Model
 
+from bs_translator_backend.agents.errors import TranslationUnavailableError
 from bs_translator_backend.utils.app_config import AppConfig
+
+# What a saturated or unreachable vLLM surfaces as, once BaseAgent's own tenacity
+# retries (config.llm_max_retries) are exhausted: a transport-level failure, or a
+# pydantic_ai-level one (e.g. ModelHTTPError for a non-2xx response).
+_LLM_UNAVAILABLE_ERRORS = (httpx.TimeoutException, httpx.TransportError, AgentRunError)
+
+
+class _TranslationBaseAgent(BaseAgent[None, str]):
+    """Adds `run_stream_text_safe`, normalizing LLM failures for callers outside this module."""
+
+    async def run_stream_text_safe(
+        self, *, user_prompt: str, delta: bool = True
+    ) -> AsyncGenerator[str, None]:
+        """`run_stream_text`, with vLLM/network failures raised as `TranslationUnavailableError`.
+
+        Keeps httpx/pydantic_ai exception types out of callers outside this module - see
+        the module docstring.
+        """
+        try:
+            async for chunk in self.run_stream_text(user_prompt=user_prompt, delta=delta):
+                yield chunk
+        except _LLM_UNAVAILABLE_ERRORS as e:
+            raise TranslationUnavailableError(str(e)) from e
 
 TRANSLATION_INSTRUCTION = """
 You are a senior translator and terminologist for the Cantonal Administration of Basel-Stadt in Switzerland.
@@ -127,7 +154,7 @@ Output:
 """
 
 
-class TranslationAgent(BaseAgent[None, str]):
+class TranslationAgent(_TranslationBaseAgent):
     """Full-text translation for the Cantonal Administration of Basel-Stadt."""
 
     def __init__(self, config: AppConfig) -> None:
@@ -154,7 +181,7 @@ class TranslationAgent(BaseAgent[None, str]):
         return agent
 
 
-class ShortTextTranslationAgent(BaseAgent[None, str]):
+class ShortTextTranslationAgent(_TranslationBaseAgent):
     """Dictionary-style translation for inputs of 1-3 words."""
 
     def __init__(self, config: AppConfig) -> None:

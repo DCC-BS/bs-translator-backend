@@ -50,13 +50,18 @@ class AppConfig(LlmConfig):
         docling_task_timeout = float(os.getenv("DOCLING_TASK_TIMEOUT", "600.0"))
         hmac_secret: str = get_env_or_throw("HMAC_SECRET")
         whisper_url: str = get_env_or_throw("WHISPER_URL")
+        # Tunable without a redeploy: when another app saturates the shared vLLM
+        # instance, lowering LLM_TIMEOUT lets a stuck request fail (and get reported
+        # to the user) sooner instead of hanging for the full default.
+        llm_timeout = float(os.getenv("LLM_TIMEOUT", str(60 * 5)))
+        llm_max_retries = int(os.getenv("LLM_MAX_RETRIES", "2"))
 
         return cls(
             llm_url=llm_url,
             llm_api_key=llm_api_key,
             llm_model=llm_model,
-            llm_timeout=60 * 5,
-            llm_max_retries=2,
+            llm_timeout=llm_timeout,
+            llm_max_retries=llm_max_retries,
             reasoning=reasoning,
             client_url=client_url,
             docling_url=docling_url,

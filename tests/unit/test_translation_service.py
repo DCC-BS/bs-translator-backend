@@ -28,10 +28,10 @@ def app_config() -> AppConfig:
 def _make_mock_agent(output: str) -> MagicMock:
     agent = MagicMock()
 
-    async def mock_run_stream_text(user_prompt: str, delta: bool = True):
+    async def mock_run_stream_text_safe(user_prompt: str, delta: bool = True):
         yield output
 
-    agent.run_stream_text = MagicMock(side_effect=mock_run_stream_text)
+    agent.run_stream_text_safe = MagicMock(side_effect=mock_run_stream_text_safe)
     return agent
 
 
@@ -60,8 +60,8 @@ async def test_short_word_counts_route_to_short_text_agent(
     chunks = [c async for c in translation_service.translate_text(text, config)]
 
     assert "".join(chunks) == "short-agent-output"
-    translation_service.short_text_translation_agent.run_stream_text.assert_called_once()
-    translation_service.translation_agent.run_stream_text.assert_not_called()
+    translation_service.short_text_translation_agent.run_stream_text_safe.assert_called_once()
+    translation_service.translation_agent.run_stream_text_safe.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -75,8 +75,8 @@ async def test_four_word_input_routes_to_normal_agent(
     ]
 
     assert "".join(chunks) == "long-agent-output"
-    translation_service.translation_agent.run_stream_text.assert_called_once()
-    translation_service.short_text_translation_agent.run_stream_text.assert_not_called()
+    translation_service.translation_agent.run_stream_text_safe.assert_called_once()
+    translation_service.short_text_translation_agent.run_stream_text_safe.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -89,8 +89,8 @@ async def test_multiline_short_input_routes_to_normal_agent(
     chunks = [c async for c in translation_service.translate_text("Hirsch\nHirsch", config)]
 
     assert "".join(chunks) == "long-agent-output"
-    translation_service.translation_agent.run_stream_text.assert_called_once()
-    translation_service.short_text_translation_agent.run_stream_text.assert_not_called()
+    translation_service.translation_agent.run_stream_text_safe.assert_called_once()
+    translation_service.short_text_translation_agent.run_stream_text_safe.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -102,8 +102,8 @@ async def test_single_character_early_return_short_circuits_before_any_agent(
     chunks = [c async for c in translation_service.translate_text("H", config)]
 
     assert chunks == ["H"]
-    translation_service.translation_agent.run_stream_text.assert_not_called()
-    translation_service.short_text_translation_agent.run_stream_text.assert_not_called()
+    translation_service.translation_agent.run_stream_text_safe.assert_not_called()
+    translation_service.short_text_translation_agent.run_stream_text_safe.assert_not_called()
 
 
 def test_short_text_user_message_omits_empty_metadata_fields(
@@ -195,7 +195,7 @@ async def test_explicit_source_language_is_asserted_in_short_text_prompt(
 
     [c async for c in translation_service.translate_text("Hirsch", config)]
 
-    prompt = translation_service.short_text_translation_agent.run_stream_text.call_args.kwargs[
+    prompt = translation_service.short_text_translation_agent.run_stream_text_safe.call_args.kwargs[
         "user_prompt"
     ]
     assert "Translate the following text from German into French." in prompt
@@ -214,7 +214,7 @@ async def test_auto_source_high_confidence_detection_is_asserted_in_short_text_p
 
     [c async for c in translation_service.translate_text("Der Hirsch", config)]
 
-    prompt = translation_service.short_text_translation_agent.run_stream_text.call_args.kwargs[
+    prompt = translation_service.short_text_translation_agent.run_stream_text_safe.call_args.kwargs[
         "user_prompt"
     ]
     assert "Translate the following text from German into French." in prompt
@@ -250,7 +250,7 @@ async def test_auto_source_low_confidence_detection_is_not_asserted_in_short_tex
 
     [c async for c in translation_service.translate_text("Hirsch", config)]
 
-    prompt = translation_service.short_text_translation_agent.run_stream_text.call_args.kwargs[
+    prompt = translation_service.short_text_translation_agent.run_stream_text_safe.call_args.kwargs[
         "user_prompt"
     ]
     assert "from" not in prompt.split("\n", 1)[0]
@@ -271,8 +271,8 @@ async def test_auto_source_low_confidence_does_not_skip_when_target_is_german(
     chunks = [c async for c in translation_service.translate_text("Hirsch", config)]
 
     assert "".join(chunks) == "short-agent-output"
-    translation_service.short_text_translation_agent.run_stream_text.assert_called_once()
-    prompt = translation_service.short_text_translation_agent.run_stream_text.call_args.kwargs[
+    translation_service.short_text_translation_agent.run_stream_text_safe.assert_called_once()
+    prompt = translation_service.short_text_translation_agent.run_stream_text_safe.call_args.kwargs[
         "user_prompt"
     ]
     assert "Translate the following text into German." in prompt
@@ -295,8 +295,8 @@ async def test_auto_source_failed_detection_routes_to_short_agent_when_target_is
     chunks = [c async for c in translation_service.translate_text("hi", config)]
 
     assert "".join(chunks) == "short-agent-output"
-    translation_service.short_text_translation_agent.run_stream_text.assert_called_once()
-    prompt = translation_service.short_text_translation_agent.run_stream_text.call_args.kwargs[
+    translation_service.short_text_translation_agent.run_stream_text_safe.assert_called_once()
+    prompt = translation_service.short_text_translation_agent.run_stream_text_safe.call_args.kwargs[
         "user_prompt"
     ]
     assert "Translate the following text into German." in prompt
@@ -312,8 +312,8 @@ async def test_explicit_same_source_and_target_still_skips(
     chunks = [c async for c in translation_service.translate_text("Hirsch", config)]
 
     assert chunks == ["Hirsch"]
-    translation_service.short_text_translation_agent.run_stream_text.assert_not_called()
-    translation_service.translation_agent.run_stream_text.assert_not_called()
+    translation_service.short_text_translation_agent.run_stream_text_safe.assert_not_called()
+    translation_service.translation_agent.run_stream_text_safe.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -350,7 +350,7 @@ async def test_long_path_prompt_never_mentions_source_language(
 
     [c async for c in translation_service.translate_text(text, config)]
 
-    prompt = translation_service.translation_agent.run_stream_text.call_args.kwargs["user_prompt"]
+    prompt = translation_service.translation_agent.run_stream_text_safe.call_args.kwargs["user_prompt"]
     assert "Translate the following text into French." in prompt
     assert "from" not in prompt.split("\n", 1)[0]
 
@@ -393,3 +393,72 @@ class TestServiceUsesBaseAgents:
         )
         for build in (service._create_user_message, service._create_short_text_user_message):
             assert "/no_think" not in build(text="Hirsch", translation_config=config)
+
+
+class TestLlmUnavailable:
+    """TranslationUnavailableError from an agent (vLLM overloaded/down) must surface as a
+    clean, typed ApiErrorException rather than an opaque or hanging failure."""
+
+    @pytest.mark.asyncio
+    async def test_failure_on_first_chunk_raises_api_error_exception(
+        self, translation_service: TranslationService
+    ) -> None:
+        from bs_translator_backend.agents.errors import TranslationUnavailableError
+        from bs_translator_backend.models.error_response import ApiErrorException
+
+        async def failing_stream(user_prompt: str, delta: bool = True):
+            raise TranslationUnavailableError("vLLM overloaded")
+            yield  # pragma: no cover - makes this an async generator function
+
+        translation_service.translation_agent.run_stream_text_safe = MagicMock(
+            side_effect=failing_stream
+        )
+        config = TranslationConfig(source_language=Language.DE, target_language=Language.FR)
+
+        with pytest.raises(ApiErrorException) as exc_info:
+            [
+                c
+                async for c in translation_service.translate_text(
+                    "Dies ist ein langer Satz für Tests.", config
+                )
+            ]
+
+        assert exc_info.value.error_response["errorId"] == "translation_service_unavailable"
+        assert exc_info.value.error_response["status"] == 503
+
+    @pytest.mark.asyncio
+    async def test_failure_on_a_later_chunk_still_raises_after_earlier_chunks_streamed(
+        self, app_config: AppConfig
+    ) -> None:
+        """Multi-chunk input (e.g. a long document) where only a later chunk fails: the
+        caller must still see the typed error, not a silently truncated translation."""
+        from bs_translator_backend.agents.errors import TranslationUnavailableError
+        from bs_translator_backend.models.error_response import ApiErrorException
+
+        call_count = 0
+
+        async def flaky_stream(user_prompt: str, delta: bool = True):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                yield "first chunk ok"
+                return
+            raise TranslationUnavailableError("vLLM overloaded")
+            yield  # pragma: no cover - makes this an async generator function
+
+        service = TranslationService(
+            app_config,
+            # A tiny max_tokens forces the two-line input below into two chunks.
+            TextChunkService(max_tokens=1),
+            lambda: MagicMock(),
+        )
+        service.translation_agent.run_stream_text_safe = MagicMock(side_effect=flaky_stream)
+        config = TranslationConfig(source_language=Language.DE, target_language=Language.FR)
+
+        received: list[str] = []
+        with pytest.raises(ApiErrorException) as exc_info:
+            async for chunk in service.translate_text("first line\nsecond line", config):
+                received.append(chunk)
+
+        assert received == ["first chunk ok"]
+        assert exc_info.value.error_response["errorId"] == "translation_service_unavailable"

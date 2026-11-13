@@ -46,10 +46,10 @@ def translation_service(app_config: AppConfig, monkeypatch) -> TranslationServic
         yield "[german] Hallo"
 
     service.translation_agent = MagicMock()
-    service.translation_agent.run_stream_text = mock_run_stream_text
+    service.translation_agent.run_stream_text_safe = mock_run_stream_text
 
     service.short_text_translation_agent = MagicMock()
-    service.short_text_translation_agent.run_stream_text = mock_run_stream_text
+    service.short_text_translation_agent.run_stream_text_safe = mock_run_stream_text
 
     return service
 
