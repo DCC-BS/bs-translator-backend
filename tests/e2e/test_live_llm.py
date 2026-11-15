@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import os
 from collections.abc import AsyncIterator
-from unittest.mock import MagicMock
 
 import pytest
 import pytest_asyncio
@@ -65,7 +64,7 @@ def _live_config() -> AppConfig:
 @pytest_asyncio.fixture
 async def translation_service() -> AsyncIterator[TranslationService]:
     """A TranslationService wired to the real LLM. Docling is never reached here."""
-    service = TranslationService(_live_config(), TextChunkService(), lambda: MagicMock())
+    service = TranslationService(_live_config(), TextChunkService())
     yield service
     await service.aclose()
 

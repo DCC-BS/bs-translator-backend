@@ -529,6 +529,86 @@ class TestChunkBoundaries:
         assert prompts[0].endswith("Text to translate:\nfirst paragraph\n")
 
 
+class TestWhitespaceAroundChunks:
+    @pytest.mark.asyncio
+    async def test_paragraph_break_survives_different_translated_whitespace(
+        self, app_config: AppConfig
+    ) -> None:
+        """A chunk ending in a blank line whose translation ends in a space (review)."""
+        service = TranslationService(app_config, TextChunkService(max_tokens=20))
+        outputs = iter(["ALPHA ", "BETA"])
+
+        async def fake_stream(user_prompt: str, delta: bool = True):
+            yield next(outputs)
+
+        service.translation_agent.run_stream_text_safe = MagicMock(side_effect=fake_stream)
+        config = TranslationConfig(source_language=Language.ES, target_language=Language.DE)
+
+        text = "first paragraph\n\nsecond paragraph"
+        chunks = [c async for c in service.translate_text(text, config)]
+
+        assert "".join(chunks) == "ALPHA \n\nBETA"
+
+    @pytest.mark.asyncio
+    async def test_leading_blank_lines_wait_for_the_first_llm_output(
+        self, translation_service: TranslationService
+    ) -> None:
+        """Nothing is streamed before the first LLM call succeeded (review)."""
+        from bs_translator_backend.agents.errors import TranslationUnavailableError
+        from bs_translator_backend.models.error_response import ApiErrorException
+
+        async def failing_stream(user_prompt: str, delta: bool = True):
+            raise TranslationUnavailableError("vLLM overloaded")
+            yield  # pragma: no cover - makes this an async generator function
+
+        translation_service.translation_agent.run_stream_text_safe = MagicMock(
+            side_effect=failing_stream
+        )
+        config = TranslationConfig(source_language=Language.DE, target_language=Language.FR)
+        stream = translation_service.translate_text("\n\nDies ist ein langer Satz.", config)
+
+        with pytest.raises(ApiErrorException):
+            await anext(stream)
+
+    @pytest.mark.asyncio
+    async def test_leading_blank_lines_come_with_the_first_output(
+        self, translation_service: TranslationService
+    ) -> None:
+        async def fake_stream(user_prompt: str, delta: bool = True):
+            yield "Ceci "
+            yield "est"
+
+        translation_service.translation_agent.run_stream_text_safe = MagicMock(
+            side_effect=fake_stream
+        )
+        config = TranslationConfig(source_language=Language.DE, target_language=Language.FR)
+
+        chunks = [
+            c async for c in translation_service.translate_text("\n\nDies ist ein Satz.", config)
+        ]
+
+        assert chunks[0] == "\n\nCeci "
+        assert "".join(chunks) == "\n\nCeci est"
+
+
+def test_whitespace_split_is_linear_on_long_whitespace_runs() -> None:
+    """No regex backtracking on user input (CodeQL polynomial regex alert)."""
+    import time
+
+    from bs_translator_backend.services.translation_service import (
+        _split_surrounding_whitespace,
+    )
+
+    chunk = "a" + " " * 200_000 + "b" + " " * 200_000
+    started = time.perf_counter()
+    leading, body, trailing = _split_surrounding_whitespace(chunk)
+    assert time.perf_counter() - started < 0.5
+    assert leading == ""
+    assert body.startswith("a")
+    assert body.endswith("b")
+    assert len(trailing) == 200_000
+
+
 class TestDetectLanguageEndpoint:
     @pytest.mark.asyncio
     async def test_low_confidence_is_reported_as_auto(

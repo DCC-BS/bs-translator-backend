@@ -97,9 +97,11 @@ services:
     volumes:
       - "${HOME}/.cache/docling:/models"
       - ./docling_config.json:/app/docling_config.json:ro
+    # Started, not healthy: document conversion uses RapidOCR and must keep working
+    # when GLM-OCR (photo translation only) fails to come up.
     depends_on:
       vllm-glm-ocr:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
       interval: 30s
@@ -123,7 +125,9 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["1"]
+              # GPU 1 is taken by vllm_gemma4 (0.95 of its memory); GPU 0 is shared
+              # with docling-serve, so GLM-OCR (0.9B) only takes half of it.
+              device_ids: ["0"]
               capabilities: [gpu]
     ipc: host
     volumes:
@@ -134,6 +138,7 @@ services:
         --port 8000
         --trust-remote-code
         --max-num-batched-tokens 8192
+        --gpu-memory-utilization 0.5
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
       interval: 30s

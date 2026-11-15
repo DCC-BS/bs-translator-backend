@@ -21,7 +21,12 @@ from bs_translator_backend.models.conversion_result import (
     OcrBlockKind,
 )
 from bs_translator_backend.models.docling_response import BoundingBox, DoclingDocument
-from bs_translator_backend.models.language import DetectLanguage, LanguageOrAuto
+from bs_translator_backend.models.language import (
+    DetectLanguage,
+    Language,
+    LanguageOrAuto,
+    get_language_name,
+)
 from bs_translator_backend.models.translation import DetectLanguageInput, TranslationConfig
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService
 from bs_translator_backend.services.translation_service import TranslationService
@@ -142,17 +147,25 @@ class ImageTranslationService:
         logger.info("Photo OCR finished", block_count=len(blocks))
         return ImageOcrResult(blocks=blocks)
 
-    async def _resolve_source_language(
+    async def _page_language_hint(
         self, blocks: list[BlockToTranslate], config: TranslationConfig
-    ) -> LanguageOrAuto | None:
-        """Detect the language once for the whole photo instead of per (short) block."""
+    ) -> str:
+        """A context line naming the language most of the photo is written in.
+
+        Only a hint for the model: short blocks ("Ausgang") are hard to detect on their
+        own. It is deliberately not used as the blocks' source language, which would mark
+        it as chosen by the user and make every block count as "already in the target
+        language" when it matches the target - a German sign with one French word would
+        then come back untranslated.
+        """
         if config.source_language and config.source_language != DetectLanguage.AUTO:
-            return config.source_language
-        page_text = "\n".join(block.text for block in blocks)
+            return ""
         detected = await self.translation_service.detect_language(
-            DetectLanguageInput(text=page_text)
+            DetectLanguageInput(text="\n".join(block.text for block in blocks))
         )
-        return detected.language
+        if not isinstance(detected.language, Language):
+            return ""
+        return f"Most of the text in the photo is in {get_language_name(detected.language)}.\n"
 
     async def translate_blocks(
         self, blocks: list[BlockToTranslate], config: TranslationConfig
@@ -165,15 +178,15 @@ class ImageTranslationService:
         if not blocks:
             return
 
-        source_language = await self._resolve_source_language(blocks, config)
+        language_hint = await self._page_language_hint(blocks, config)
         page_text = "\n".join(block.text for block in blocks)[:PAGE_CONTEXT_MAX_CHARS]
         block_config = config.model_copy(
             update={
-                "source_language": source_language,
                 "context": (
                     f"{config.context}\n\n"
                     "The text to translate is one block of text recognised in a photo "
                     "(a sign, a letter, a menu, a form, ...). Translate only that block. "
+                    f"{language_hint}"
                     f"All text recognised in the photo, for context:\n{page_text}"
                 ),
             }

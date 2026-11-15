@@ -82,3 +82,18 @@ def test_trailer_defaults_to_unexpected_error() -> None:
         "errorId": "unexpected_error",
         "status": 500,
     })
+
+
+@pytest.mark.asyncio
+async def test_transcription_error_after_first_chunk_ends_with_trailer() -> None:
+    from bs_translator_backend.routers.transcription_route import _stream_transcript
+
+    async def source() -> AsyncGenerator[str, None]:
+        yield "Guten Tag"
+        raise ApiErrorException({"errorId": "transcription_service_unavailable", "status": 503})
+
+    peeked = await peek_first(source())
+    body = "".join([chunk async for chunk in _stream_transcript(_REQUEST, peeked)])
+
+    assert body.startswith("Guten Tag" + STREAM_ERROR_SEPARATOR)
+    assert _trailer(body) == {"errorId": "transcription_service_unavailable", "status": 503}

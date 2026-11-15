@@ -99,9 +99,6 @@ _UNDETECTABLE_VARIANTS = frozenset({
 })
 _ENGLISH = frozenset({Language.EN, Language.EN_GB, Language.EN_US})
 
-_LEADING_BLANK_LINES = re.compile(r"\A(?:[ \t]*\r?\n)*")
-_TRAILING_WHITESPACE = re.compile(r"\s*\Z")
-
 
 def _is_short_text(text: str) -> bool:
     """Whether text is a short, single-line phrase (1-3 words) suited to a lexical lookup."""
@@ -154,16 +151,65 @@ def _rest_is_in_language(text: str, language: Language) -> bool:
     return True
 
 
+def _trailing_whitespace(text: str) -> str:
+    return text[len(text.rstrip()) :]
+
+
 def _missing_trailing_whitespace(source_trailing: str, translation: str) -> str:
     """The part of the source chunk's trailing whitespace the translation did not end with.
 
-    Re-emitted after the chunk's translation so adjacent chunks never fuse.
+    Re-emitted after the chunk's translation so adjacent chunks never fuse. When the
+    translation ends with different whitespace (e.g. a space where the source had a
+    blank line), the missing line breaks are still added.
     """
-    match = _TRAILING_WHITESPACE.search(translation)
-    translated_trailing = match.group() if match else ""
-    if not source_trailing.startswith(translated_trailing):
+    translated_trailing = _trailing_whitespace(translation)
+    if source_trailing.startswith(translated_trailing):
+        return source_trailing[len(translated_trailing) :]
+    missing_newlines = source_trailing.count("\n") - translated_trailing.count("\n")
+    return "\n" * max(0, missing_newlines)
+
+
+async def _stream_llm(
+    agent: TranslationAgent | ShortTextTranslationAgent,
+    user_message: str,
+    config: TranslationConfig,
+) -> AsyncGenerator[str, None]:
+    """Stream one LLM translation, turning LLM failures into API errors."""
+    try:
+        async for text_part in agent.run_stream_text_safe(user_prompt=user_message, delta=True):
+            yield text_part
+    except (TranslationRejectedError, TranslationUnavailableError) as e:
+        logger.exception(
+            "Translation LLM call failed",
+            target_language=config.target_language.value,
+            short_text_agent=isinstance(agent, ShortTextTranslationAgent),
+        )
+        raise _to_api_error(e) from e
+
+
+class _HeldWhitespace:
+    """Whitespace held back until the LLM produced its first output.
+
+    A failure of the first LLM call then still happens before anything was streamed,
+    so the route can answer with a proper error status instead of a committed 200.
+    """
+
+    def __init__(self) -> None:
+        self._pending = ""
+        self._released = False
+
+    def add(self, whitespace: str) -> str:
+        """Returns what may be streamed now (nothing until the first release)."""
+        if self._released:
+            return whitespace
+        self._pending += whitespace
         return ""
-    return source_trailing[len(translated_trailing) :]
+
+    def release_with(self, text: str) -> str:
+        """Returns `text` preceded by any held whitespace; nothing is held afterwards."""
+        self._released = True
+        released, self._pending = self._pending + text, ""
+        return released
 
 
 def _to_api_error(
@@ -193,12 +239,15 @@ def _split_surrounding_whitespace(chunk: str) -> tuple[str, str, str]:
     """Split a chunk into leading blank lines, the text to translate, trailing whitespace.
 
     Only the middle part goes to the LLM; the rest is re-emitted verbatim, so line and
-    paragraph breaks between chunks survive the translation.
+    paragraph breaks between chunks survive the translation. Plain string scans, no
+    regex: the input is user text and may hold long whitespace runs.
     """
-    leading_end = _LEADING_BLANK_LINES.match(chunk)
-    start = leading_end.end() if leading_end else 0
-    trailing = _TRAILING_WHITESPACE.search(chunk, start)
-    end = trailing.start() if trailing else len(chunk)
+    start = 0
+    for line in chunk.splitlines(keepends=True):
+        if line.strip() or not line.endswith(("\n", "\r")):
+            break
+        start += len(line)
+    end = max(start, len(chunk.rstrip()))
     return chunk[:start], chunk[start:end], chunk[end:]
 
 
@@ -361,14 +410,16 @@ Text to translate:
 
         text_chunks = self.text_chunk_service.chunk_text(text)
         accumulated_context = ""
+        held = _HeldWhitespace()
 
         for text_chunk in text_chunks:
             leading, chunk_body, trailing = _split_surrounding_whitespace(text_chunk)
-            if leading:
-                yield leading
             if not chunk_body:
-                yield trailing
+                if released := held.add(leading + trailing):
+                    yield released
                 continue
+            if released := held.add(leading):
+                yield released
 
             chunk_config = TranslationConfig(
                 target_language=config.target_language,
@@ -386,25 +437,18 @@ Text to translate:
                 translation_config=chunk_config,
             )
             chunk_translation = ""
-            try:
-                async for text_part in translation_agent.run_stream_text_safe(
-                    user_prompt=user_message, delta=True
-                ):
-                    chunk_translation += text_part
-                    yield text_part
-            except (TranslationRejectedError, TranslationUnavailableError) as e:
-                logger.exception(
-                    "Translation LLM call failed",
-                    target_language=config.target_language.value,
-                    use_short_text_agent=use_short_text_agent,
-                )
-                raise _to_api_error(e) from e
+            async for text_part in _stream_llm(translation_agent, user_message, config):
+                chunk_translation += text_part
+                yield held.release_with(text_part)
 
-            if missing := _missing_trailing_whitespace(trailing, chunk_translation):
-                yield missing
+            if released := held.add(_missing_trailing_whitespace(trailing, chunk_translation)):
+                yield released
 
             # Accumulate context for next chunk (keep last ~500 chars for context)
             accumulated_context = (accumulated_context + chunk_translation)[-500:]
+
+        if rest := held.release_with(""):
+            yield rest
 
     async def aclose(self) -> None:
         """Close both agents' HTTP clients. Called from the FastAPI lifespan."""

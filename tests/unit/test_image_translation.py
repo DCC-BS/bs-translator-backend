@@ -175,7 +175,7 @@ def _service(
 
 class TestTranslateBlocks:
     @pytest.mark.asyncio
-    async def test_translates_each_block_with_page_language_and_context(
+    async def test_page_language_is_a_hint_not_the_source_language(
         self, app_config: AppConfig
     ) -> None:
         seen_configs: list[TranslationConfig] = []
@@ -197,7 +197,10 @@ class TestTranslateBlocks:
         assert {e.id: e.translated for e in events} == {"a": "[Ausgang]", "b": "12:30"}
         # "12:30" has no letters and is not sent to the LLM.
         assert len(seen_configs) == 1
-        assert seen_configs[0].source_language == Language.DE
+        # Detected, not chosen: each block keeps its own detection, so a block that
+        # matches the target is not skipped just because the page language does.
+        assert seen_configs[0].source_language is None
+        assert "Most of the text in the photo is in German" in seen_configs[0].context
         assert "Ausgang" in seen_configs[0].context
 
     @pytest.mark.asyncio

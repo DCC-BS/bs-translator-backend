@@ -15,7 +15,11 @@ from bs_translator_backend.models.language import DetectLanguage, LanguageOrAuto
 from bs_translator_backend.services.transcription_service import TranscriptionService
 from bs_translator_backend.utils.app_config import AppConfig
 from bs_translator_backend.utils.cancelation import ClientDisconnectedError, run_until_disconnected
-from bs_translator_backend.utils.streaming import peek_first
+from bs_translator_backend.utils.streaming import (
+    peek_first,
+    stream_error_trailer,
+    strip_stream_error_separator,
+)
 from bs_translator_backend.utils.uploads import read_upload_limited
 
 logger = get_logger(__name__)
@@ -36,12 +40,17 @@ async def _stream_transcript(
                 if await request.is_disconnected():
                     logger.info("Client disconnected, stopping transcription stream")
                     break
-                yield chunk
+                yield strip_stream_error_separator(chunk)
         except ApiErrorException as e:
-            # Headers (status 200) are already sent: all that is left is to stop.
+            # Headers (status 200) are already sent: end with the error trailer so the
+            # client knows the transcript is incomplete.
             logger.warning(
                 "Transcription failed mid-stream", error_id=e.error_response.get("errorId")
             )
+            yield stream_error_trailer(e.error_response)
+        except Exception:
+            logger.exception("Transcription failed mid-stream")
+            yield stream_error_trailer()
 
 
 @inject
