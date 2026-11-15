@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # check=skip=SecretsUsedInArgOrEnv
 # The build stage runs on the shared mise base image (ghcr.io/dcc-bs/dcc-docker-images/mise)
 # which provides the toolchain and the `assemble-runtime` script. Python is managed by
@@ -50,6 +51,16 @@ WORKDIR /app
 # Security: Create and switch to a non-root user
 RUN useradd --create-home --uid 1000 app
 
+# fastText language-identification model (lid.176.bin, 126 MB) used by fast-langdetect.
+# Baked in so the app never downloads it at runtime (which blocked the first request and
+# failed on every call without egress). The app loads it from $FTLANG_CACHE. --chmod also
+# applies to the created directory, which needs the x bit to be traversable.
+ENV FTLANG_CACHE=/opt/fasttext-langdetect
+ADD --chmod=755 \
+    --checksum=sha256:7e69ec5451bc261cc7844e49e4792a85d7f09c06789ec800fc4a44aec362764e \
+    https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin \
+    ${FTLANG_CACHE}/lid.176.bin
+
 # Environment
 ENV APP_MODE=prod
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -71,4 +82,4 @@ USER app
 EXPOSE 8000
 
 # Start the application: load env via varlock, then run uvicorn with the runtime python
-ENTRYPOINT ["/bin/sh", "-c", "varlock load && varlock run -- uvicorn bs_translator_backend.app:app --host 0.0.0.0 --port \"${PORT:-8090}\" --no-access-log"]
+ENTRYPOINT ["/bin/sh", "-c", "varlock load && varlock run -- uvicorn bs_translator_backend.app:app --host 0.0.0.0 --port \"${PORT:-8000}\" --no-access-log"]

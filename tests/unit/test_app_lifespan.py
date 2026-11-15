@@ -1,5 +1,5 @@
 import os
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -32,11 +32,25 @@ async def test_lifespan_closes_translation_service(monkeypatch: pytest.MonkeyPat
     app = create_app()
     service = app.state.container.translation_service()
     service.aclose = AsyncMock()
+    transcription_service = app.state.container.transcription_service()
+    transcription_service.aclose = AsyncMock()
 
     async with app.router.lifespan_context(app):
         pass
 
     service.aclose.assert_awaited_once()
+    transcription_service.aclose.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_lifespan_warms_up_language_detection(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The fastText model is loaded at startup, not inside the first request."""
+    warm_up = MagicMock()
+    monkeypatch.setattr("bs_translator_backend.app.warm_up_language_detection", warm_up)
+    app = _build_fastapi_app()
+
+    async with app.router.lifespan_context(app):
+        warm_up.assert_called_once()
 
 
 @pytest.mark.asyncio

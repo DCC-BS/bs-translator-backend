@@ -2,7 +2,6 @@
 .vscode
 examples
 tests
-.env.example
 Makefile
 .git
 .gitignore
@@ -15,3 +14,9 @@ publiccode.yml
 renovate.json
 docker-compose.yml
 Dockerfile
+# Local env files hold secrets and dev URLs: never bake them into the image. The varlock
+# schemas are needed at runtime (copied into the final stage by the Dockerfile).
+.env
+.env.*
+!.env.schema
+!.env.dev.schema

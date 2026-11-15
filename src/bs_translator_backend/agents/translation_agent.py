@@ -13,16 +13,53 @@ import httpx
 from dcc_backend_common.llm_agent import BaseAgent, Preprocessor
 from dcc_backend_common.llm_agent.postprocessing import replace_eszett
 from pydantic_ai import Agent
-from pydantic_ai.exceptions import AgentRunError
+from pydantic_ai.exceptions import AgentRunError, ModelHTTPError
 from pydantic_ai.models import Model
 
-from bs_translator_backend.agents.errors import TranslationUnavailableError
+from bs_translator_backend.agents.errors import (
+    TranslationRejectedError,
+    TranslationUnavailableError,
+)
 from bs_translator_backend.utils.app_config import AppConfig
 
 # What a saturated or unreachable vLLM surfaces as, once BaseAgent's own tenacity
 # retries (config.llm_max_retries) are exhausted: a transport-level failure, or a
 # pydantic_ai-level one (e.g. ModelHTTPError for a non-2xx response).
 _LLM_UNAVAILABLE_ERRORS = (httpx.TimeoutException, httpx.TransportError, AgentRunError)
+
+# 4xx statuses worth another attempt (mirrors dcc_backend_common's BaseAgent). Any other
+# 4xx is a verdict on the request itself and is answered identically forever.
+_TRANSIENT_CLIENT_ERRORS = frozenset({408, 409, 425, 429})
+
+# Fragments of the errors vLLM / OpenAI-compatible servers return when the prompt does
+# not fit the model's context window.
+_CONTEXT_LENGTH_HINTS = (
+    "context length",
+    "context_length",
+    "context window",
+    "maximum model length",
+    "max_model_len",
+    "too long",
+)
+
+
+def _to_translation_error(error: Exception) -> Exception:
+    """Map an LLM failure onto this package's errors, without the upstream body.
+
+    The full error (body included) is logged by the caller; the message built here may
+    reach the client, so it only names the failure class and status code.
+    """
+    if isinstance(error, ModelHTTPError):
+        status = error.status_code
+        if 400 <= status < 500 and status not in _TRANSIENT_CLIENT_ERRORS:
+            body = str(error.body).lower()
+            return TranslationRejectedError(
+                f"LLM rejected the request with HTTP {status}",
+                status_code=status,
+                input_too_long=any(hint in body for hint in _CONTEXT_LENGTH_HINTS),
+            )
+        return TranslationUnavailableError(f"LLM returned HTTP {status}")
+    return TranslationUnavailableError(f"LLM call failed: {type(error).__name__}")
 
 
 class _TranslationBaseAgent(BaseAgent[None, str]):
@@ -31,16 +68,18 @@ class _TranslationBaseAgent(BaseAgent[None, str]):
     async def run_stream_text_safe(
         self, *, user_prompt: str, delta: bool = True
     ) -> AsyncGenerator[str, None]:
-        """`run_stream_text`, with vLLM/network failures raised as `TranslationUnavailableError`.
+        """`run_stream_text`, with vLLM/network failures raised as this package's errors.
 
-        Keeps httpx/pydantic_ai exception types out of callers outside this module - see
-        the module docstring.
+        Non-retryable 4xx rejections (e.g. the prompt exceeds the context window) raise
+        `TranslationRejectedError`; everything else `TranslationUnavailableError`. Keeps
+        httpx/pydantic_ai exception types out of callers outside this module - see the
+        module docstring.
         """
         try:
             async for chunk in self.run_stream_text(user_prompt=user_prompt, delta=delta):
                 yield chunk
         except _LLM_UNAVAILABLE_ERRORS as e:
-            raise TranslationUnavailableError(str(e)) from e
+            raise _to_translation_error(e) from e
 
 
 TRANSLATION_INSTRUCTION = """

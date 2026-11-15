@@ -38,9 +38,7 @@ def _make_mock_agent(output: str) -> MagicMock:
 @pytest.fixture
 def translation_service(app_config: AppConfig) -> TranslationService:
     text_chunk_service = TextChunkService()
-    service = TranslationService(
-        app_config, text_chunk_service, conversion_service_factory=lambda: MagicMock()
-    )
+    service = TranslationService(app_config, text_chunk_service)
 
     # Mock both agents to avoid requiring an actual LLM, and to let tests assert
     # which agent a given input was routed to.
@@ -224,7 +222,7 @@ async def test_auto_source_high_confidence_detection_is_asserted_in_short_text_p
 async def test_auto_detection_does_not_mutate_the_callers_config(
     translation_service: TranslationService, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The caller owns the config: `translate_image` reuses one across every text
+    """The caller owns the config: image translation reuses one across every text
     segment, so a detected language must not leak out of a single call."""
     monkeypatch.setattr(
         "bs_translator_backend.services.translation_service.detect_language",
@@ -317,30 +315,30 @@ async def test_explicit_same_source_and_target_still_skips(
 
 
 @pytest.mark.parametrize(
-    ("source_language", "detect_return", "text"),
+    ("source_language", "detect_return", "expected_instruction"),
     [
-        (Language.DE, None, "Der grosse braune Hirsch"),
+        (Language.DE, None, "Translate the following text from German into French."),
         (
             DetectLanguage.AUTO,
             Success(DetectLanguageOutput(language=Language.DE, confidence=0.96)),
-            "Der grosse braune Hirsch",
+            "Translate the following text from German into French.",
         ),
         (
             DetectLanguage.AUTO,
             Success(DetectLanguageOutput(language=Language.EN_US, confidence=0.36)),
-            "Der grosse braune Hirsch",
+            "Translate the following text into French.",
         ),
     ],
 )
 @pytest.mark.asyncio
-async def test_long_path_prompt_never_mentions_source_language(
+async def test_long_path_prompt_names_only_a_trustworthy_source_language(
     translation_service: TranslationService,
     monkeypatch: pytest.MonkeyPatch,
     source_language: Language | DetectLanguage,
     detect_return: object,
-    text: str,
+    expected_instruction: str,
 ) -> None:
-    """The long path's prompt is unaffected by source-language trustworthiness."""
+    """An explicit or confidently detected source language is named in the long prompt."""
     if detect_return is not None:
         monkeypatch.setattr(
             "bs_translator_backend.services.translation_service.detect_language",
@@ -348,26 +346,231 @@ async def test_long_path_prompt_never_mentions_source_language(
         )
     config = TranslationConfig(source_language=source_language, target_language=Language.FR)
 
-    [c async for c in translation_service.translate_text(text, config)]
+    [c async for c in translation_service.translate_text("Der grosse braune Hirsch", config)]
 
     prompt = translation_service.translation_agent.run_stream_text_safe.call_args.kwargs[
         "user_prompt"
     ]
-    assert "Translate the following text into French." in prompt
-    assert "from" not in prompt.split("\n", 1)[0]
+    assert prompt.split("\n", 1)[0] == expected_instruction
+
+
+def _detect_as(monkeypatch: pytest.MonkeyPatch, language: Language, confidence: float) -> None:
+    monkeypatch.setattr(
+        "bs_translator_backend.services.translation_service.detect_language",
+        lambda _text: Success(DetectLanguageOutput(language=language, confidence=confidence)),
+    )
+
+
+_LONG_GERMAN = "Der Bundesrat hat heute eine wichtige Entscheidung getroffen."
+
+
+class TestAlreadyInTargetLanguage:
+    """When an auto-detected text is returned untranslated."""
+
+    @pytest.mark.asyncio
+    async def test_confident_detection_of_the_target_language_skips(
+        self, translation_service: TranslationService, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _detect_as(monkeypatch, Language.DE, 0.95)
+        config = TranslationConfig(source_language=DetectLanguage.AUTO, target_language=Language.DE)
+
+        chunks = [c async for c in translation_service.translate_text(_LONG_GERMAN, config)]
+
+        assert chunks == [_LONG_GERMAN]
+        translation_service.translation_agent.run_stream_text_safe.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_low_confidence_detection_does_not_skip(
+        self, translation_service: TranslationService, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _detect_as(monkeypatch, Language.DE, 0.5)
+        config = TranslationConfig(source_language=DetectLanguage.AUTO, target_language=Language.DE)
+
+        chunks = [c async for c in translation_service.translate_text(_LONG_GERMAN, config)]
+
+        assert "".join(chunks) == "long-agent-output"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("detected", "target"),
+        [
+            (Language.ZH_CN, Language.ZH_CN),
+            (Language.ZH_CN, Language.ZH_TW),
+            (Language.ZH_CN, Language.ZH_HK),
+            (Language.EN_US, Language.EN_US),
+            (Language.EN_US, Language.EN_GB),
+        ],
+    )
+    async def test_regional_variants_are_never_skipped(
+        self,
+        translation_service: TranslationService,
+        monkeypatch: pytest.MonkeyPatch,
+        detected: Language,
+        target: Language,
+    ) -> None:
+        """Detection cannot tell Simplified from Traditional, or British from American."""
+        _detect_as(monkeypatch, detected, 1.0)
+        config = TranslationConfig(source_language=DetectLanguage.AUTO, target_language=target)
+
+        chunks = [
+            c async for c in translation_service.translate_text("這是一個簡單的中文句子。", config)
+        ]
+
+        assert "".join(chunks) != "這是一個簡單的中文句子。"
+
+    @pytest.mark.asyncio
+    async def test_detected_english_skips_for_generic_english(
+        self, translation_service: TranslationService, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _detect_as(monkeypatch, Language.EN_US, 0.95)
+        config = TranslationConfig(source_language=DetectLanguage.AUTO, target_language=Language.EN)
+        text = "This is already an English sentence."
+
+        chunks = [c async for c in translation_service.translate_text(text, config)]
+
+        assert chunks == [text]
+
+    @pytest.mark.asyncio
+    async def test_mixed_language_document_is_translated(
+        self, translation_service: TranslationService, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A document starting in the target language but continuing in another one."""
+        german = "Der Bundesrat hat entschieden. " * 50
+        french = "Le Conseil fédéral a décidé. " * 50
+
+        def fake_detect(text: str):
+            language = Language.FR if "Conseil" in text else Language.DE
+            return Success(DetectLanguageOutput(language=language, confidence=0.99))
+
+        monkeypatch.setattr(
+            "bs_translator_backend.services.translation_service.detect_language", fake_detect
+        )
+        config = TranslationConfig(source_language=DetectLanguage.AUTO, target_language=Language.DE)
+
+        chunks = [c async for c in translation_service.translate_text(german + french, config)]
+
+        assert "long-agent-output" in "".join(chunks)
+
+
+class TestNothingToTranslate:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("text", ["", "   ", "123", "!?", "42 %", "H"])
+    async def test_is_returned_unchanged(
+        self, translation_service: TranslationService, text: str
+    ) -> None:
+        config = TranslationConfig(source_language=Language.DE, target_language=Language.FR)
+
+        chunks = [c async for c in translation_service.translate_text(text, config)]
+
+        assert chunks == [text]
+        translation_service.short_text_translation_agent.run_stream_text_safe.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("text", ["水", "물"])
+    async def test_single_cjk_character_is_translated(
+        self, translation_service: TranslationService, text: str
+    ) -> None:
+        config = TranslationConfig(source_language=Language.ZH_CN, target_language=Language.DE)
+
+        chunks = [c async for c in translation_service.translate_text(text, config)]
+
+        assert "".join(chunks) == "short-agent-output"
+
+
+class TestShortTextInScriptsWithoutSpaces:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("text", ["这是一个简单的中文句子。", "ฉันชอบกินข้าวเหนียวมะม่วง"])
+    async def test_sentence_routes_to_normal_agent(
+        self, translation_service: TranslationService, text: str
+    ) -> None:
+        config = TranslationConfig(source_language=Language.ZH_CN, target_language=Language.DE)
+
+        chunks = [c async for c in translation_service.translate_text(text, config)]
+
+        assert "".join(chunks) == "long-agent-output"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("text", ["图书馆", "สวัสดี"])
+    async def test_word_routes_to_short_text_agent(
+        self, translation_service: TranslationService, text: str
+    ) -> None:
+        config = TranslationConfig(source_language=Language.ZH_CN, target_language=Language.DE)
+
+        chunks = [c async for c in translation_service.translate_text(text, config)]
+
+        assert "".join(chunks) == "short-agent-output"
+
+
+class TestChunkBoundaries:
+    @pytest.mark.asyncio
+    async def test_newlines_between_chunks_are_re_emitted(self, app_config: AppConfig) -> None:
+        service = TranslationService(app_config, TextChunkService(max_tokens=20))
+        outputs = iter(["UNO", "DOS\n", "TRES"])
+
+        async def fake_stream(user_prompt: str, delta: bool = True):
+            yield next(outputs)
+
+        service.translation_agent.run_stream_text_safe = MagicMock(side_effect=fake_stream)
+        config = TranslationConfig(source_language=Language.ES, target_language=Language.DE)
+
+        chunks = [
+            c
+            async for c in service.translate_text(
+                "first paragraph\n\nsecond paragraph\nthird line\n", config
+            )
+        ]
+
+        # The LLM's own trailing newline ("DOS\n") is not doubled.
+        assert "".join(chunks) == "UNO\n\nDOS\nTRES\n"
+        prompts = [
+            call.kwargs["user_prompt"]
+            for call in service.translation_agent.run_stream_text_safe.call_args_list
+        ]
+        assert prompts[0].endswith("Text to translate:\nfirst paragraph\n")
+
+
+class TestDetectLanguageEndpoint:
+    @pytest.mark.asyncio
+    async def test_low_confidence_is_reported_as_auto(
+        self, translation_service: TranslationService, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from bs_translator_backend.models.translation import DetectLanguageInput
+
+        _detect_as(monkeypatch, Language.EN_US, 0.39)
+
+        result = await translation_service.detect_language(
+            DetectLanguageInput(text="Hirsch Auto Haus")
+        )
+
+        assert result.language == DetectLanguage.AUTO
+
+    @pytest.mark.asyncio
+    async def test_confident_detection_is_returned(
+        self, translation_service: TranslationService, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from bs_translator_backend.models.translation import DetectLanguageInput
+
+        _detect_as(monkeypatch, Language.DE, 0.97)
+
+        result = await translation_service.detect_language(
+            DetectLanguageInput(text="Der Bundesrat hat entschieden.")
+        )
+
+        assert result.language == Language.DE
+        assert result.confidence == 0.97
 
 
 class TestServiceUsesBaseAgents:
     def test_service_builds_base_agent_instances(self, app_config) -> None:
         from dcc_backend_common.llm_agent import BaseAgent
 
-        service = TranslationService(app_config, TextChunkService(), lambda: MagicMock())
+        service = TranslationService(app_config, TextChunkService())
         assert isinstance(service.translation_agent, BaseAgent)
         assert isinstance(service.short_text_translation_agent, BaseAgent)
 
     @pytest.mark.asyncio
     async def test_aclose_closes_both_agents(self, app_config) -> None:
-        service = TranslationService(app_config, TextChunkService(), lambda: MagicMock())
+        service = TranslationService(app_config, TextChunkService())
         service.translation_agent.close = AsyncMock()
         service.short_text_translation_agent.close = AsyncMock()
 
@@ -384,7 +587,7 @@ class TestServiceUsesBaseAgents:
         assert "pydantic_ai" not in Path(mod.__file__).read_text()
 
     def test_user_message_has_no_no_think_marker(self, app_config) -> None:
-        service = TranslationService(app_config, TextChunkService(), lambda: MagicMock())
+        service = TranslationService(app_config, TextChunkService())
         config = TranslationConfig(
             target_language=Language.FR,
             source_language=Language.DE,
@@ -452,7 +655,6 @@ class TestLlmUnavailable:
             app_config,
             # A tiny max_tokens forces the two-line input below into two chunks.
             TextChunkService(max_tokens=1),
-            lambda: MagicMock(),
         )
         service.translation_agent.run_stream_text_safe = MagicMock(side_effect=flaky_stream)
         config = TranslationConfig(source_language=Language.DE, target_language=Language.FR)
@@ -464,3 +666,41 @@ class TestLlmUnavailable:
 
         assert received == ["first chunk ok"]
         assert exc_info.value.error_response["errorId"] == "translation_service_unavailable"
+
+
+class TestLlmRejected:
+    """A non-retryable 4xx from the LLM is not "service unavailable"."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("input_too_long", "error_id", "status"),
+        [(True, "input_too_long", 422), (False, "translation_service_unavailable", 502)],
+    )
+    async def test_rejection_is_mapped(
+        self,
+        translation_service: TranslationService,
+        input_too_long: bool,
+        error_id: str,
+        status: int,
+    ) -> None:
+        from bs_translator_backend.agents.errors import TranslationRejectedError
+        from bs_translator_backend.models.error_response import ApiErrorException
+
+        async def rejecting_stream(user_prompt: str, delta: bool = True):
+            raise TranslationRejectedError(
+                "LLM rejected the request with HTTP 400",
+                status_code=400,
+                input_too_long=input_too_long,
+            )
+            yield  # pragma: no cover - makes this an async generator function
+
+        translation_service.translation_agent.run_stream_text_safe = MagicMock(
+            side_effect=rejecting_stream
+        )
+        config = TranslationConfig(source_language=Language.DE, target_language=Language.FR)
+
+        with pytest.raises(ApiErrorException) as exc_info:
+            [c async for c in translation_service.translate_text(_LONG_GERMAN, config)]
+
+        assert exc_info.value.error_response["errorId"] == error_id
+        assert exc_info.value.error_response["status"] == status

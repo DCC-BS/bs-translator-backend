@@ -2,6 +2,7 @@ from dcc_backend_common.usage_tracking import UsageTrackingService
 from dependency_injector import containers, providers
 
 from bs_translator_backend.services.document_conversion_service import DocumentConversionService
+from bs_translator_backend.services.image_translation_service import ImageTranslationService
 from bs_translator_backend.services.text_chunk_service import TextChunkService
 from bs_translator_backend.services.transcription_service import TranscriptionService
 from bs_translator_backend.services.translation_service import TranslationService
@@ -24,6 +25,12 @@ class Container(containers.DeclarativeContainer):
         TranslationService,
         app_config=app_config,
         text_chunk_service=text_chunk_service,
+    )
+
+    image_translation_service: providers.Singleton[ImageTranslationService] = providers.Singleton(
+        ImageTranslationService,
+        app_config=app_config,
+        translation_service=translation_service,
         conversion_service_factory=document_conversion_service.provider,
     )
 

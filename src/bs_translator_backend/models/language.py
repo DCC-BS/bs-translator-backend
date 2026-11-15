@@ -82,6 +82,7 @@ class Language(Enum):
     UR = "ur"  # Urdu
     VI = "vi"  # Vietnamese
     ZH_CN = "zh-cn"  # Chinese (Simplified)
+    ZH_HK = "zh-hk"  # Chinese (Cantonese, Traditional script) - Hong Kong
     ZH_TW = "zh-tw"  # Chinese (Traditional)
 
 
@@ -161,6 +162,7 @@ _LANGUAGE_NAMES = {
     Language.UR: "Urdu",
     Language.VI: "Vietnamese",
     Language.ZH_CN: "Chinese (Simplified)",
+    Language.ZH_HK: "Cantonese (Traditional Chinese, Hong Kong)",
     Language.ZH_TW: "Chinese (Traditional)",
 }
 

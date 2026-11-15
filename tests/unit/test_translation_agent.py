@@ -65,3 +65,58 @@ class TestNoDirectSdkUsage:
         source = Path(mod.__file__).read_text()
         assert "import openai" not in source
         assert "from openai" not in source
+
+
+class TestErrorMapping:
+    """LLM failures are mapped without leaking the upstream response body."""
+
+    @staticmethod
+    def _http_error(status_code: int, body: object):
+        from pydantic_ai.exceptions import ModelHTTPError
+
+        return ModelHTTPError(status_code=status_code, model_name="test-model", body=body)
+
+    def test_context_length_400_is_input_too_long(self) -> None:
+        from bs_translator_backend.agents.errors import TranslationRejectedError
+
+        error = mod._to_translation_error(
+            self._http_error(
+                400,
+                {"message": "This model's maximum context length is 8192 tokens. However..."},
+            )
+        )
+
+        assert isinstance(error, TranslationRejectedError)
+        assert error.input_too_long
+        assert error.status_code == 400
+        assert "maximum context" not in str(error)
+
+    def test_other_4xx_is_rejected_but_not_input_too_long(self) -> None:
+        from bs_translator_backend.agents.errors import TranslationRejectedError
+
+        error = mod._to_translation_error(self._http_error(404, {"message": "model not found"}))
+
+        assert isinstance(error, TranslationRejectedError)
+        assert not error.input_too_long
+
+    @pytest.mark.parametrize("status_code", [429, 500, 503])
+    def test_transient_status_is_unavailable(self, status_code: int) -> None:
+        from bs_translator_backend.agents.errors import TranslationUnavailableError
+
+        error = mod._to_translation_error(
+            self._http_error(status_code, "http://internal-vllm:8000 overloaded")
+        )
+
+        assert isinstance(error, TranslationUnavailableError)
+        assert str(status_code) in str(error)
+        assert "internal-vllm" not in str(error)
+
+    def test_transport_error_message_has_no_details(self) -> None:
+        import httpx
+
+        from bs_translator_backend.agents.errors import TranslationUnavailableError
+
+        error = mod._to_translation_error(httpx.ConnectError("internal-vllm:8000 refused"))
+
+        assert isinstance(error, TranslationUnavailableError)
+        assert "internal-vllm" not in str(error)

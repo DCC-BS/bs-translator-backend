@@ -1,11 +1,10 @@
-import asyncio
 from collections.abc import Callable
 from typing import Annotated
 
 from dcc_backend_common.logger import get_logger
 from dcc_backend_common.usage_tracking import UsageTrackingService
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Form, Header, Request, UploadFile
+from fastapi import APIRouter, Form, Header, Request, Response, UploadFile
 
 from bs_translator_backend.container import Container
 from bs_translator_backend.models.conversion_result import ConversionOutput
@@ -13,6 +12,10 @@ from bs_translator_backend.models.language import LanguageOrAuto
 from bs_translator_backend.services.document_conversion_service import (
     DocumentConversionService,
 )
+from bs_translator_backend.utils.cancelation import ClientDisconnectedError, run_until_disconnected
+
+# nginx closes the connection without a response; used when the client went away.
+CLIENT_CLOSED_REQUEST = 499
 
 logger = get_logger(__name__)
 
@@ -36,13 +39,13 @@ def create_router(
     logger.debug("Creating convert router")
     router: APIRouter = APIRouter(prefix="/convert", tags=["convert"])
 
-    @router.post("/doc", summary="Convert document to markdown")
+    @router.post("/doc", summary="Convert document to markdown", response_model=ConversionOutput)
     async def convert(
         request: Request,
         file: UploadFile,
         x_client_id: Annotated[str | None, Header()],
         source_language: Annotated[LanguageOrAuto, Form()],
-    ) -> ConversionOutput:
+    ) -> ConversionOutput | Response:
         """
         Convert the content of an uploaded document to markdown with images.
 
@@ -61,16 +64,16 @@ def create_router(
         )
 
         async with document_conversion_service_factory() as conversion_service:
-            task = asyncio.create_task(conversion_service.convert(file, source_language))
+            # The conversion is cancelled and awaited on disconnect, before the service
+            # (and its HTTP client) is closed by the `async with`.
+            try:
+                result = await run_until_disconnected(
+                    request, conversion_service.convert(file, source_language)
+                )
+            except ClientDisconnectedError:
+                logger.info("Conversion task cancelled due to client disconnect")
+                return Response(status_code=CLIENT_CLOSED_REQUEST)
 
-            while task.done() is False:
-                await asyncio.sleep(0.1)
-                if await request.is_disconnected():
-                    task.cancel()
-                    logger.info("Conversion task cancelled due to client disconnect")
-                    return ConversionOutput(markdown="", images={})
-
-            result = task.result()
             return ConversionOutput(markdown=result.markdown, images=result.images)
 
     logger.debug("Conversion router configured")

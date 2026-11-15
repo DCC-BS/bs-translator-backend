@@ -1,5 +1,6 @@
 from io import BytesIO
-from unittest.mock import AsyncMock, MagicMock, patch
+from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
@@ -8,6 +9,7 @@ from starlette.datastructures import UploadFile
 from bs_translator_backend.models.error_codes import (
     DOCLING_TASK_FAILED,
     DOCLING_TIMEOUT,
+    FILE_TOO_LARGE,
     INVALID_MIME_TYPE,
     UNEXPECTED_ERROR,
 )
@@ -128,57 +130,73 @@ class TestValidateMimetype:
 
 
 class TestResolveFile:
-    def test_bytesio_uses_provided_filename_and_content_type(
+    @pytest.mark.asyncio
+    async def test_bytesio_uses_provided_filename_and_content_type(
         self, service: DocumentConversionService
     ) -> None:
         data = b"hello"
-        content, filename, ct = service._resolve_file(BytesIO(data), "doc.pdf", "application/pdf")
+        content, filename, ct = await service._resolve_file(
+            BytesIO(data), "doc.pdf", "application/pdf"
+        )
         assert content == data
         assert filename == "doc.pdf"
         assert ct == "application/pdf"
 
-    def test_bytesio_detects_mimetype_from_filename(
+    @pytest.mark.asyncio
+    async def test_bytesio_detects_mimetype_from_filename(
         self, service: DocumentConversionService
     ) -> None:
-        _, _, ct = service._resolve_file(BytesIO(b"x"), "report.pdf", None)
+        _, _, ct = await service._resolve_file(BytesIO(b"x"), "report.pdf", None)
         assert ct == "application/pdf"
 
-    def test_bytesio_falls_back_to_uploaded_document_name(
+    @pytest.mark.asyncio
+    async def test_bytesio_falls_back_to_uploaded_document_name(
         self, service: DocumentConversionService
     ) -> None:
-        _, filename, _ = service._resolve_file(BytesIO(b"x"), None, "text/plain")
+        _, filename, _ = await service._resolve_file(BytesIO(b"x"), None, "text/plain")
         assert filename == "uploaded_document"
 
-    def test_upload_file_reads_content_and_filename(
+    @pytest.mark.asyncio
+    async def test_upload_file_reads_content_and_filename(
         self, service: DocumentConversionService
     ) -> None:
         data = b"pdf content"
-        mock_file = MagicMock()
-        mock_file.file.read.return_value = data
-        mock_file.filename = "upload.pdf"
-        mock_file.__class__ = UploadFile
+        upload = UploadFile(file=BytesIO(data), filename="upload.pdf")
 
-        content, filename, _ct = service._resolve_file(mock_file, None, "application/pdf")
+        content, filename, _ct = await service._resolve_file(upload, None, "application/pdf")
         assert content == data
         assert filename == "upload.pdf"
 
-    def test_upload_file_param_filename_overrides_upload_filename(
+    @pytest.mark.asyncio
+    async def test_upload_file_param_filename_overrides_upload_filename(
         self, service: DocumentConversionService
     ) -> None:
-        mock_file = MagicMock()
-        mock_file.file.read.return_value = b""
-        mock_file.filename = "original.pdf"
-        mock_file.__class__ = UploadFile
+        upload = UploadFile(file=BytesIO(b""), filename="original.pdf")
 
-        _, filename, _ = service._resolve_file(mock_file, "override.pdf", "application/pdf")
+        _, filename, _ = await service._resolve_file(upload, "override.pdf", "application/pdf")
         assert filename == "override.pdf"
 
-    def test_unknown_extension_raises_invalid_mime(
+    @pytest.mark.asyncio
+    async def test_upload_above_size_limit_raises_file_too_large(self, config: AppConfig) -> None:
+        service = DocumentConversionService(config.model_copy(update={"max_upload_size_mb": 0.001}))
+        upload = UploadFile(file=BytesIO(b"x" * 2048), filename="big.pdf")
+
+        with pytest.raises(ApiErrorException) as exc_info:
+            await service._resolve_file(upload, None, None)
+        assert exc_info.value.args[0]["errorId"] == FILE_TOO_LARGE
+        assert exc_info.value.args[0]["status"] == 413
+
+    @pytest.mark.asyncio
+    async def test_unknown_extension_raises_invalid_mime(
         self, service: DocumentConversionService
     ) -> None:
         with pytest.raises(ApiErrorException) as exc_info:
-            service._resolve_file(BytesIO(b"x"), "file.xyz", None)
+            await service._resolve_file(BytesIO(b"x"), "file.xyz", None)
         assert exc_info.value.args[0]["errorId"] == INVALID_MIME_TYPE
+
+    @pytest.mark.parametrize("name", ["scan.tif", "page.htm", "page.xhtml", "notes.markdown"])
+    def test_docling_supported_extensions_are_accepted(self, name: str) -> None:
+        assert get_mimetype(Path(name)) != "invalid"
 
 
 # ---------------------------------------------------------------------------
@@ -440,36 +458,104 @@ class TestConvert:
 # ---------------------------------------------------------------------------
 
 
-class TestConvertToDocling:
+class TestOcrImage:
     @pytest.mark.asyncio
     async def test_returns_docling_document(self, service: DocumentConversionService) -> None:
         service.fetch_docling_file_convert = AsyncMock(
             return_value=httpx.Response(200, json=_RESULT_BODY)
         )
-        doc = await service.convert_to_docling(
-            BytesIO(b"data"), DetectLanguage.AUTO, filename="file.pdf"
-        )
+        doc = await service.ocr_image(b"data", DetectLanguage.AUTO, "photo.jpg", "image/jpeg")
         assert doc.name == "test_doc"
 
     @pytest.mark.asyncio
-    async def test_auto_language_uses_multilingual_ocr(
+    async def test_uses_configured_ocr_and_layout_presets(
         self, service: DocumentConversionService
     ) -> None:
         service.fetch_docling_file_convert = AsyncMock(
             return_value=httpx.Response(200, json=_RESULT_BODY)
         )
-        await service.convert_to_docling(BytesIO(b"data"), DetectLanguage.AUTO, filename="file.pdf")
-        call_kwargs = service.fetch_docling_file_convert.call_args
-        options = call_kwargs[0][1]  # second positional arg
+        await service.ocr_image(b"data", DetectLanguage.AUTO, "photo.jpg", "image/jpeg")
+        options = service.fetch_docling_file_convert.call_args[0][1]
+        assert options["ocr_preset"] == "glm-ocr-remote"
+        assert options["layout_preset"] == "ppdoclayout-v3"
+        assert options["force_ocr"] is False
+        assert options["image_export_mode"] == "placeholder"
         assert set(options["ocr_lang"]) == {"de", "en", "fr", "it"}
 
     @pytest.mark.asyncio
-    async def test_english_language_uses_single_ocr_lang(
-        self, service: DocumentConversionService
-    ) -> None:
+    async def test_empty_layout_preset_is_not_sent(self, config: AppConfig) -> None:
+        service = DocumentConversionService(
+            config.model_copy(update={"docling_image_layout_preset": ""})
+        )
         service.fetch_docling_file_convert = AsyncMock(
             return_value=httpx.Response(200, json=_RESULT_BODY)
         )
-        await service.convert_to_docling(BytesIO(b"data"), Language.EN, filename="file.pdf")
+        await service.ocr_image(b"data", Language.EN, "photo.png", "image/png")
         options = service.fetch_docling_file_convert.call_args[0][1]
+        assert "layout_preset" not in options
         assert options["ocr_lang"] == ["en"]
+
+    @pytest.mark.asyncio
+    async def test_rejects_non_image_types(self, service: DocumentConversionService) -> None:
+        service.fetch_docling_file_convert = AsyncMock()
+        with pytest.raises(ApiErrorException) as exc_info:
+            await service.ocr_image(b"data", DetectLanguage.AUTO, "x.heic", "image/heic")
+        assert exc_info.value.args[0]["errorId"] == INVALID_MIME_TYPE
+        service.fetch_docling_file_convert.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_tolerates_null_meta_fields_from_newer_docling(
+        self, service: DocumentConversionService
+    ) -> None:
+        """docling-serve >= 1.36 serializes `meta: null` on every item (SVC-18)."""
+        body = {
+            **_RESULT_BODY,
+            "document": {
+                **_RESULT_BODY["document"],
+                "json_content": {
+                    "name": "photo",
+                    "body": {"self_ref": "#/body", "name": "_root_", "meta": None},
+                    "texts": [
+                        {
+                            "self_ref": "#/texts/0",
+                            "label": "text",
+                            "orig": "Hallo",
+                            "text": "Hallo",
+                            "meta": None,
+                            "prov": [
+                                {
+                                    "page_no": 1,
+                                    "bbox": {
+                                        "l": 1,
+                                        "t": 9,
+                                        "r": 5,
+                                        "b": 2,
+                                        "coord_origin": "BOTTOMLEFT",
+                                    },
+                                    "charspan": [0, 5],
+                                }
+                            ],
+                        }
+                    ],
+                    "pages": {"1": {"page_no": 1, "size": {"width": 10, "height": 10}}},
+                },
+            },
+            "errors": [{"component_type": "pipeline", "module_name": "x", "error_message": "y"}],
+            "status": "partial_success",
+        }
+        service.fetch_docling_file_convert = AsyncMock(return_value=httpx.Response(200, json=body))
+        doc = await service.ocr_image(b"data", DetectLanguage.AUTO, "photo.jpg", "image/jpeg")
+        assert doc.texts[0].text == "Hallo"
+
+
+class TestDoclingAuth:
+    def test_sends_docling_key_not_llm_key(self, config: AppConfig) -> None:
+        service = DocumentConversionService(
+            config.model_copy(update={"docling_api_key": "doc-key", "llm_api_key": "llm-key"})
+        )
+        assert service.client.headers["Authorization"] == "Bearer doc-key"
+        assert service.client.headers["X-Api-Key"] == "doc-key"
+
+    def test_no_auth_header_without_key(self, config: AppConfig) -> None:
+        service = DocumentConversionService(config.model_copy(update={"docling_api_key": ""}))
+        assert "Authorization" not in service.client.headers
