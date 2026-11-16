@@ -2,9 +2,12 @@ import pytest
 from returns.result import Failure, Success
 
 from bs_translator_backend.models.language import Language
+from bs_translator_backend.utils import language_detection
 from bs_translator_backend.utils.language_detection import (
     _FT_LANGUAGE_MAPPING,
+    DETECTION_SAMPLE_CHARS,
     detect_language,
+    sample_windows,
 )
 
 
@@ -17,6 +20,7 @@ from bs_translator_backend.utils.language_detection import (
         ("zh", Language.ZH_CN),
         ("zh-cn", Language.ZH_CN),
         ("zh-tw", Language.ZH_TW),
+        ("yue", Language.ZH_HK),
         ("pt", Language.PT),
         ("pt-br", Language.PT),
         ("sr", Language.SR),
@@ -79,3 +83,62 @@ def test_detect_language_chinese():
     output = result.unwrap()
     assert output.language == Language.ZH_CN
     assert output.confidence > 0.1
+
+
+class TestNeverDownloads:
+    """fast-langdetect's default would download the 126 MB model on first use."""
+
+    @pytest.fixture(autouse=True)
+    def _fresh_detector(self):
+        language_detection._get_detector.cache_clear()
+        yield
+        language_detection._get_detector.cache_clear()
+
+    @pytest.fixture
+    def no_download(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        def fail(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("fast-langdetect tried to download a model")
+
+        monkeypatch.setattr("fast_langdetect.infer.ModelDownloader.download", fail)
+
+    def test_without_full_model_uses_bundled_lite_model(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path, no_download: None
+    ) -> None:
+        monkeypatch.setenv("FTLANG_CACHE", str(tmp_path))
+
+        result = detect_language("Dies ist ein einfacher deutscher Satz.")
+
+        assert result.unwrap().language == Language.DE
+
+    def test_full_model_is_used_from_ftlang_cache(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path, no_download: None
+    ) -> None:
+        (tmp_path / "lid.176.bin").write_bytes(b"")
+        monkeypatch.setenv("FTLANG_CACHE", str(tmp_path))
+
+        detector = language_detection._get_detector()
+
+        assert detector.config.custom_model_path == str(tmp_path / "lid.176.bin")
+
+    def test_input_is_not_truncated_to_80_characters(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path, no_download: None
+    ) -> None:
+        monkeypatch.setenv("FTLANG_CACHE", str(tmp_path))
+
+        assert language_detection._get_detector().config.max_input_length is None
+
+
+class TestSampleWindows:
+    def test_short_text_is_its_own_sample(self) -> None:
+        assert sample_windows("kurz") == ["kurz"]
+
+    def test_long_text_is_sampled_from_start_to_end(self) -> None:
+        text = "a" * DETECTION_SAMPLE_CHARS + "b" * DETECTION_SAMPLE_CHARS * 3 + "c" * 10
+        windows = sample_windows(text)
+
+        assert windows[0] == text[:DETECTION_SAMPLE_CHARS]
+        assert windows[-1] == text[-DETECTION_SAMPLE_CHARS:]
+        assert all(len(window) == DETECTION_SAMPLE_CHARS for window in windows)
+
+    def test_number_of_samples_is_bounded(self) -> None:
+        assert len(sample_windows("x" * DETECTION_SAMPLE_CHARS * 100)) == 8

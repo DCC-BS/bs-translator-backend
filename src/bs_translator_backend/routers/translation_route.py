@@ -5,56 +5,62 @@ from typing import Annotated
 from dcc_backend_common.logger import get_logger
 from dcc_backend_common.usage_tracking import UsageTrackingService
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Header, Request, UploadFile
-from fastapi.params import Form
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Header, Request
+from fastapi.responses import Response, StreamingResponse
 
 from bs_translator_backend.container import Container
 from bs_translator_backend.models.error_response import ApiErrorException
 from bs_translator_backend.models.translation import (
     DetectLanguageInput,
     DetectLanguageOutput,
-    TranslationConfig,
     TranslationInput,
 )
 from bs_translator_backend.services.translation_service import TranslationService
+from bs_translator_backend.utils.cancelation import ClientDisconnectedError, run_until_disconnected
+from bs_translator_backend.utils.streaming import (
+    peek_first,
+    stream_error_trailer,
+    strip_stream_error_separator,
+)
+
+# nginx closes the connection without a response; used when the client went away.
+CLIENT_CLOSED_REQUEST = 499
 
 logger = get_logger(__name__)
 
 
-async def _peek_first[T](
-    source: AsyncGenerator[T, None],
-) -> tuple[T, AsyncGenerator[T, None]] | None:
-    """Pull the first item out of `source`, handing back a generator that still yields it.
-
-    Awaiting the first item here - before the route returns a `StreamingResponse` - means
-    a failure that happens immediately (e.g. vLLM already overloaded) raises inside the
-    route handler itself, where FastAPI's normal exception handling still applies and can
-    turn it into a proper status code + JSON body. Once headers are sent, as they are for
-    every later item, an error can only be handled from within the generator body.
-
-    Returns `None` if `source` was empty.
-    """
-    try:
-        first = await source.__anext__()
-    except StopAsyncIteration:
-        return None
-
-    async def _rest() -> AsyncGenerator[T, None]:
-        # `source` is only ever iterated from here on, so closing `_rest()` (the only
-        # generator the caller sees from this point) must close `source` too.
+async def _stream_with_error_trailer(
+    request: Request, peeked: tuple[str, AsyncGenerator[str, None]] | None
+) -> AsyncGenerator[str, None]:
+    """Stream the translation, ending it with an error trailer if it fails mid-way."""
+    if peeked is None:
+        return
+    _, chunks = peeked
+    # aclosing: on disconnect the service generator must be closed here, inside the
+    # request context, so its cleanup (llm_call usage logging) runs deterministically
+    # instead of at garbage collection.
+    async with aclosing(chunks) as chunks:
         try:
-            yield first
-            async for item in source:
-                yield item
-        finally:
-            await source.aclose()
-
-    return first, _rest()
+            async for chunk in chunks:
+                if await request.is_disconnected():
+                    logger.info("Client disconnected, stopping translation stream")
+                    break
+                yield strip_stream_error_separator(chunk)
+        except ApiErrorException as e:
+            # Headers (status 200) are already sent by this point: mark the stream as
+            # failed so the client does not take the truncated text for a complete
+            # translation.
+            logger.warning(
+                "Translation failed mid-stream", error_id=e.error_response.get("errorId")
+            )
+            yield stream_error_trailer(e.error_response)
+        except Exception:
+            logger.exception("Unexpected error mid-stream")
+            yield stream_error_trailer()
 
 
 @inject
-def create_router(  # noqa: C901
+def create_router(
     translation_service: TranslationService = Provide[Container.translation_service],
     usage_tracking_service: UsageTrackingService = Provide[Container.usage_tracking_service],
 ) -> APIRouter:
@@ -85,8 +91,12 @@ def create_router(  # noqa: C901
         request: Request,
         translation_input: TranslationInput,
         x_client_id: Annotated[str | None, Header()],
-    ) -> StreamingResponse:
-        """Translate the provided text using the specified configuration."""
+    ) -> Response:
+        """Translate the provided text using the specified configuration.
+
+        Streams plain text. If the translation fails after the first chunk was sent, the
+        stream ends with U+001E followed by `{"errorId": ..., "status": ...}`.
+        """
         config = translation_input.config
         usage_tracking_service.log_event(
             "translation.text",
@@ -104,102 +114,20 @@ def create_router(  # noqa: C901
         # failure that happens right away (e.g. vLLM already overloaded) raises inside
         # this handler, where it still becomes a proper ApiErrorException JSON response
         # instead of a response that's already committed to status 200.
-        peeked = await _peek_first(
-            translation_service.translate_text(translation_input.text, translation_input.config)
-        )
-
-        async def generate_stream() -> AsyncGenerator[str, None]:
-            if peeked is None:
-                return
-            _, chunks = peeked
-            # aclosing: on disconnect the service generator must be closed here,
-            # inside the request context, so its cleanup (llm_call usage logging)
-            # runs deterministically instead of at garbage collection.
-            async with aclosing(chunks) as chunks:
-                try:
-                    async for chunk in chunks:
-                        if await request.is_disconnected():
-                            logger.info("Client disconnected, stopping translation stream")
-                            break
-                        yield chunk
-                except ApiErrorException:
-                    # Headers (status 200) are already sent by this point, so the best
-                    # we can do is stop cleanly rather than let the client hang or see a
-                    # raw, unhandled exception.
-                    logger.warning("Translation LLM became unavailable mid-stream, stopping stream")
-
-        return StreamingResponse(
-            generate_stream(),
-            media_type="text/plain; charset=utf-8",
-            headers={
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                "X-Accel-Buffering": "no",
-                "Connection": "keep-alive",
-            },
-        )
-
-    @router.post("/image", summary="Translate text in image")
-    async def translate_image(
-        request: Request,
-        image_file: UploadFile,
-        x_client_id: Annotated[str | None, Header()],
-        translation_config: Annotated[str, Form()] = '{"target_language": "de"}',
-    ) -> StreamingResponse:
-        """
-        Translate text within an uploaded image file.
-
-        Args:
-            image_file: Uploaded image file containing text to translate
-            source_language: Source language code (default: auto-detect)
-            target_language: Target language code for translation
-
-        Returns:
-            StreamingResponse: Streaming response with translated text
-        """
-        config = TranslationConfig.model_validate_json(translation_config)
-
-        usage_tracking_service.log_event(
-            "translation.image",
-            user_id=x_client_id,
-            target_language=config.target_language.value,
-            source_language=config.source_language.value
-            if config.source_language is not None
-            else None,
-        )
-
-        # Read the file content once to avoid issues with file being closed in streaming context
         try:
-            file_content = image_file.file.read()
-            from io import BytesIO
-
-            file_stream = BytesIO(file_content)
-            filename = image_file.filename
-            content_type = image_file.content_type
-        except Exception:
-            logger.exception("Failed to read uploaded file", filename=image_file.filename)
-            raise
-
-        peeked = await _peek_first(
-            translation_service.translate_image(file_stream, config, filename, content_type)
-        )
-
-        async def generate_translation() -> AsyncGenerator[str, None]:
-            if peeked is None:
-                return
-            _, translations = peeked
-            async with aclosing(translations) as translations:
-                try:
-                    async for translation in translations:
-                        if await request.is_disconnected():
-                            logger.info("Client disconnected, stopping translation stream")
-                            break
-
-                        yield translation.model_dump_json()
-                except ApiErrorException:
-                    logger.warning("Translation LLM became unavailable mid-stream, stopping stream")
+            peeked = await run_until_disconnected(
+                request,
+                peek_first(
+                    translation_service.translate_text(
+                        translation_input.text, translation_input.config
+                    )
+                ),
+            )
+        except ClientDisconnectedError:
+            return Response(status_code=CLIENT_CLOSED_REQUEST)
 
         return StreamingResponse(
-            generate_translation(),
+            _stream_with_error_trailer(request, peeked),
             media_type="text/plain; charset=utf-8",
             headers={
                 "Cache-Control": "no-cache, no-store, must-revalidate",

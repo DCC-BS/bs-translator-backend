@@ -12,11 +12,14 @@ itself.
 from __future__ import annotations
 
 import asyncio
+import json
 
 import httpx
 import pytest
+from fastapi import FastAPI
 
-from tests.e2e.conftest import CLIENT_HEADERS, FakeLLM
+from bs_translator_backend.utils.app_config import AppConfig
+from tests.e2e.conftest import CLIENT_HEADERS, FakeLLM, error_response, stream_response
 
 
 class TestLanguagesRoute:
@@ -133,7 +136,7 @@ class TestPromptRouting:
     that a 1-3 word input reaches the LLM carrying the short-text
     (dictionary-lookup) system prompt and an explicit "from X into Y"
     instruction, while a longer input carries the ordinary long-form system
-    prompt and no "from" clause.
+    prompt.
     """
 
     @pytest.mark.asyncio
@@ -164,7 +167,7 @@ class TestPromptRouting:
         assert "Hirsch" in user_message
 
     @pytest.mark.asyncio
-    async def test_long_input_uses_long_form_agent_without_source_language_clause(
+    async def test_long_input_uses_long_form_agent_with_source_language_clause(
         self, client: httpx.AsyncClient, fake_llm: FakeLLM
     ) -> None:
         fake_llm.respond_with("Le grand cerf brun a traversé la forêt.")
@@ -188,8 +191,7 @@ class TestPromptRouting:
 
         assert "dictionary-style lookup" not in system_prompt
         assert "senior translator and terminologist" in system_prompt
-        assert "Translate the following text into French." in user_message
-        assert "from German" not in user_message
+        assert "Translate the following text from German into French." in user_message
 
     @pytest.mark.asyncio
     async def test_short_input_auto_source_translating_into_german_uses_fallback_prompt(
@@ -256,4 +258,149 @@ class TestErrorPaths:
         assert response.status_code == 503
         body = response.json()
         assert body["errorId"] == "translation_service_unavailable"
-        assert "500" in body["debugMessage"]
+        # The upstream response body (which can name internal hosts) never leaks.
+        assert "upstream boom" not in response.text
+
+    @pytest.mark.asyncio
+    async def test_context_length_error_returns_422_input_too_long(
+        self, client: httpx.AsyncClient, fake_llm: FakeLLM
+    ) -> None:
+        fake_llm.fail(
+            status_code=400,
+            message="This model's maximum context length is 8192 tokens. However, you requested 9000.",
+        )
+
+        response = await client.post(
+            "/translation/text",
+            json={
+                "text": "Der grosse braune Hirsch lief durch den Wald.",
+                "config": {"source_language": "de", "target_language": "fr"},
+            },
+            headers=CLIENT_HEADERS,
+        )
+
+        assert response.status_code == 422
+        assert response.json()["errorId"] == "input_too_long"
+        assert "maximum context length" not in response.text
+
+    @pytest.mark.asyncio
+    async def test_failure_after_first_chunk_ends_stream_with_error_trailer(
+        self, client: httpx.AsyncClient, fake_llm: FakeLLM
+    ) -> None:
+        """A long text is translated chunk by chunk; the second chunk's LLM call fails."""
+        calls = 0
+
+        def respond(_request: httpx.Request) -> httpx.Response:
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return stream_response("Premier bloc")
+            return error_response(500, "upstream boom")
+
+        fake_llm._respond = respond
+        paragraph = ("Der grosse braune Hirsch lief durch den Wald. " * 70).rstrip()
+        text = f"{paragraph}\n\n{paragraph}"
+
+        response = await client.post(
+            "/translation/text",
+            json={"text": text, "config": {"source_language": "de", "target_language": "fr"}},
+            headers=CLIENT_HEADERS,
+        )
+
+        assert response.status_code == 200
+        translated, separator, trailer = response.text.partition("\x1e")
+        assert translated == "Premier bloc\n\n"
+        assert separator == "\x1e"
+        assert json.loads(trailer) == {"errorId": "translation_service_unavailable", "status": 503}
+
+    @pytest.mark.asyncio
+    async def test_invalid_config_returns_422_invalid_request(
+        self, client: httpx.AsyncClient
+    ) -> None:
+        response = await client.post(
+            "/translation/text",
+            json={"text": "Hallo", "config": {"target_language": "xx"}},
+            headers=CLIENT_HEADERS,
+        )
+
+        assert response.status_code == 422
+        assert response.json()["errorId"] == "invalid_request"
+
+
+class TestTranscriptionRoute:
+    """POST /transcription/audio, with Whisper stubbed at the HTTP transport layer."""
+
+    @pytest.fixture
+    def app_config(self, app_config: AppConfig) -> AppConfig:
+        # About 1 KB, so the size limit can be tested with a small upload.
+        return app_config.model_copy(update={"max_upload_size_mb": 0.001})
+
+    @staticmethod
+    def _stub_whisper(app: FastAPI, handler) -> None:
+        service = app.state.container.transcription_service()
+        service.client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+
+    @staticmethod
+    async def _post(client: httpx.AsyncClient, content: bytes = b"audio") -> httpx.Response:
+        return await client.post(
+            "/transcription/audio",
+            files={"audio_file": ("audio.webm", content, "audio/webm")},
+            data={"language": "zh-tw"},
+            headers=CLIENT_HEADERS,
+        )
+
+    @pytest.mark.asyncio
+    async def test_streams_the_transcript_unbuffered(
+        self, client: httpx.AsyncClient, built_app: FastAPI
+    ) -> None:
+        sent: list[bytes] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            sent.append(request.read())
+            return httpx.Response(200, text="你好")
+
+        self._stub_whisper(built_app, handler)
+
+        response = await self._post(client)
+
+        assert response.status_code == 200
+        assert response.text == "你好"
+        assert response.headers["x-accel-buffering"] == "no"
+        assert b'name="language"\r\n\r\nzh\r\n' in sent[0]
+
+    @pytest.mark.asyncio
+    async def test_whisper_error_status_is_a_json_error(
+        self, client: httpx.AsyncClient, built_app: FastAPI
+    ) -> None:
+        self._stub_whisper(built_app, lambda _request: httpx.Response(500, text="whisper boom"))
+
+        response = await self._post(client)
+
+        assert response.status_code == 503
+        assert response.json()["errorId"] == "transcription_service_unavailable"
+        assert "whisper boom" not in response.text
+
+    @pytest.mark.asyncio
+    async def test_whisper_unreachable_is_a_json_error(
+        self, client: httpx.AsyncClient, built_app: FastAPI
+    ) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("refused", request=request)
+
+        self._stub_whisper(built_app, handler)
+
+        response = await self._post(client)
+
+        assert response.status_code == 503
+        assert response.json()["errorId"] == "transcription_service_unavailable"
+
+    @pytest.mark.asyncio
+    async def test_upload_over_the_limit_is_413(
+        self, client: httpx.AsyncClient, built_app: FastAPI
+    ) -> None:
+        self._stub_whisper(built_app, lambda _request: httpx.Response(200, text="never"))
+
+        response = await self._post(client, content=b"x" * 2048)
+
+        assert response.status_code == 413
+        assert response.json()["errorId"] == "file_too_large"

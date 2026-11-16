@@ -23,12 +23,15 @@ class DoclingComponentType(StrEnum):
     MODEL = "model"
     DOC_ASSEMBLER = "doc_assembler"
     USER_INPUT = "user_input"
+    PIPELINE = "pipeline"
 
 
 class ErrorItem(BaseModel):
     """Error item from docling processing."""
 
-    component_type: DoclingComponentType
+    # Kept open (plain `str` fallback) so an error type added by a newer docling does not
+    # turn a partial success into a validation failure of the whole response.
+    component_type: DoclingComponentType | str
     module_name: str
     error_message: str
 
@@ -221,7 +224,10 @@ class CodeLanguageLabel(StrEnum):
 class BaseItem(BaseModel):
     """Base class for all document items."""
 
-    model_config = ConfigDict(extra="forbid")
+    # docling-core keeps adding item fields (`meta`, `source`, `comments`, ...) and
+    # docling-serve serializes them as `null` when unset; ignoring unknown fields keeps
+    # this partial model compatible with newer docling versions.
+    model_config = ConfigDict(extra="ignore")
 
     self_ref: str
     parent: RefItem | None = None
@@ -503,26 +509,19 @@ class DoclingDocument(BaseModel):
 
 
 class DocumentResponse(BaseModel):
-    """Document response content."""
+    """Document response content.
+
+    `json_content` stays a plain dict here: it is only validated into a
+    `DoclingDocument` (once) by the callers that need it, so a markdown-only
+    conversion never pays for validating a large JSON document.
+    """
 
     filename: str
     md_content: str | None = None
-    json_content: DoclingDocument | dict[str, Any] | None = None
+    json_content: dict[str, Any] | None = None
     html_content: str | None = None
     text_content: str | None = None
     doctags_content: str | None = None
-
-    def model_post_init(self, __context: Any) -> None:
-        """Post-init processing to ensure json_content is properly typed."""
-        if (
-            isinstance(self.json_content, dict)
-            and self.json_content.get("schema_name") == "DoclingDocument"
-        ):
-            # Try to parse as DoclingDocument if it has the right structure
-            import contextlib
-
-            with contextlib.suppress(Exception):
-                self.json_content = DoclingDocument.model_validate(self.json_content)
 
 
 class ConvertDocumentResponse(BaseModel):

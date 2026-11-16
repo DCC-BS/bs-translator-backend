@@ -67,6 +67,12 @@ CLIENT_URL=http://localhost:${CLIENT_PORT}
 HMAC_SECRET='your_hmac_secret' # generate with openssl rand 32 | base64
 DOCLING_URL='http://localhost:8004/v1'
 WHISPER_URL='http://localhost:50001/v1'
+
+# Uploads and photo translation (defaults shown)
+MAX_UPLOAD_SIZE_MB=50
+DOCLING_IMAGE_OCR_PRESET='glm-ocr-remote'
+DOCLING_IMAGE_LAYOUT_PRESET='ppdoclayout-v3'
+IMAGE_TRANSLATION_CONCURRENCY=4
 ```
 
 > **Note:** The `HF_TOKEN` is required for Hugging Face API access and model downloads; you can create a token [here](https://huggingface.co/settings/tokens). Set `LLM_REASONING=true` to enable extended reasoning/thinking in the LLM responses.
@@ -137,7 +143,8 @@ docker compose logs -f
 
 The Docker Compose setup includes:
 - **vLLM Service**: Serves the configured model with GPU acceleration
-- **Backend API**: FastAPI application for translation services
+- **docling-serve**: Document and photo conversion (`ghcr.io/dcc-bs/dcc-docling-serve-cu130`), with the PP-DocLayout-V3 layout preset and GLM-OCR remote OCR
+- **vLLM GLM-OCR**: Serves `zai-org/GLM-OCR` for docling-serve's `glm-ocr-remote` OCR preset
 
 ### Using Dockerfile Only
 
@@ -145,9 +152,15 @@ The Docker Compose setup includes:
 # Build the Docker image
 docker build -t bs-translator-backend .
 
-# Run the container
+# Run the container (listens on $PORT, default 8000)
 docker run --rm --env-file .env -p 8000:8000 bs-translator-backend
 ```
+
+The image never reads a local `.env` (it is excluded from the build context) and contains
+the full fastText language-identification model (`lid.176.bin`) at `$FTLANG_CACHE`, so
+language detection never downloads anything at runtime. Outside Docker the app uses
+`$FTLANG_CACHE/lid.176.bin` when present and otherwise falls back to the smaller model
+bundled with fast-langdetect.
 
 ## Testing & Development Tools
 
@@ -166,8 +179,10 @@ uv run python -m pytest --doctest-modules
 ### Translation
 
 - **GET `/translation/languages`**: Get list of supported languages
-- **POST `/translation/text`**: Translate text with customizable parameters
-- **POST `/translation/detect-language`**: Detect language of a given text with confidence score
+- **POST `/translation/text`**: Translate text with customizable parameters. Streams plain text; if the translation fails after the first chunk was sent, the stream ends with the character U+001E followed by `{"errorId": "...", "status": <int>}`
+- **POST `/translation/detect-language`**: Detect language of a given text with confidence score (`auto` when the confidence is below 0.5)
+
+Errors are JSON `{"errorId": "...", "status": <int>, "debugMessage": "..."}`; request validation errors (422, `invalid_request`) also carry FastAPI's `detail`.
 
 ### Document Conversion
 

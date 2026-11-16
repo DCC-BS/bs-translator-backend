@@ -77,6 +77,7 @@ class TestGetLanguageName:
         assert get_language_name(Language.EN_US) == "English (United States)"
         assert get_language_name(Language.ZH_CN) == "Chinese (Simplified)"
         assert get_language_name(Language.ZH_TW) == "Chinese (Traditional)"
+        assert get_language_name(Language.ZH_HK) == "Cantonese (Traditional Chinese, Hong Kong)"
 
     def test_get_language_name_with_auto_detect(self) -> None:
         """Test that get_language_name handles DetectLanguage.AUTO correctly."""

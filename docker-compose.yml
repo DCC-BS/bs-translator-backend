@@ -71,7 +71,7 @@ services:
   #             device_ids: ["0"]
   #             # capabilities: [gpu]
   docling-serve-translator:
-    image: ghcr.io/dcc-bs/dcc-docling-serve-cu130:v1.36.0
+    image: ghcr.io/dcc-bs/dcc-docling-serve-cu130:latest
     container_name: docling-serve-translator
     runtime: nvidia
     deploy:
@@ -87,15 +87,66 @@ services:
       - DOCLING_MODELS_PATH=/models
       - DOCLING_CONFIG_FILE=/app/docling_config.json
       - DOCLING_SERVE_ENABLE_UI=true
+      - DOCLING_SERVE_ENABLE_REMOTE_SERVICES=true
+      - DOCLING_SERVE_ALLOW_EXTERNAL_PLUGINS=true
+      - DOCLING_SERVE_ALLOW_CUSTOM_LAYOUT_CONFIG=true
+      # PP-DocLayout-V3 layout preset (DOCLING_IMAGE_LAYOUT_PRESET in the backend)
+      - 'DOCLING_SERVE_CUSTOM_LAYOUT_PRESETS={"ppdoclayout-v3": {"kind": "ppdoclayout-v3"}}'
+      # GLM-OCR backing the "glm-ocr-remote" OCR preset (DOCLING_IMAGE_OCR_PRESET)
+      - GLMOCR_REMOTE_OCR_API_URL=http://vllm-glm-ocr:8000/v1/chat/completions
     volumes:
       - "${HOME}/.cache/docling:/models"
       - ./docling_config.json:/app/docling_config.json:ro
+    # Started, not healthy: document conversion uses RapidOCR and must keep working
+    # when GLM-OCR (photo translation only) fails to come up.
+    depends_on:
+      vllm-glm-ocr:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 60s
+
+  # vLLM serving GLM-OCR for docling-serve's remote OCR (photo translation)
+  vllm-glm-ocr:
+    platform: linux/amd64
+    image: vllm/vllm-openai:v0.32.0
+    container_name: vllm-glm-ocr-translator
+    ports:
+      - "${OCR_API_PORT:-8005}:8000"
+    environment:
+      - HF_TOKEN=${HF_TOKEN:-}
+      - LD_LIBRARY_PATH=/lib/x86_64-linux-gnu
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              # GPU 1 is taken by vllm_gemma4 (0.95 of its memory); GPU 0 is shared
+              # with docling-serve, so GLM-OCR (0.9B) only takes half of it.
+              device_ids: ["0"]
+              capabilities: [gpu]
+    ipc: host
+    volumes:
+      - ${HF_HOME:-${HOME:-/root}/.cache/huggingface}:/root/.cache/huggingface
+    command: >
+        --model zai-org/GLM-OCR
+        --served-model-name zai-org/GLM-OCR
+        --port 8000
+        --trust-remote-code
+        --max-num-batched-tokens 8192
+        --gpu-memory-utilization 0.5
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+    restart: unless-stopped
+
   # dots-ocr-translator:
   #   platform: linux/amd64
   #   image: vllm/vllm-openai:v0.32.0
