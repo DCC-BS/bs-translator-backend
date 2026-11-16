@@ -197,7 +197,7 @@ wheels = [
 
 [[package]]
 name = "bs-translator-backend"
-version = "1.6.0"
+version = "1.6.1"
 source = { editable = "." }
 dependencies = [
     { name = "dcc-backend-common", extra = ["fastapi", "pydantic-ai"] },
@@ -225,7 +225,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dcc-backend-common", extras = ["fastapi", "pydantic-ai"], specifier = ">=0.1.23" },
+    { name = "dcc-backend-common", extras = ["fastapi", "pydantic-ai"], specifier = ">=0.1.24" },
     { name = "dependency-injector", specifier = ">=4.48.1" },
     { name = "fast-langdetect", specifier = ">=1.0.0" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.139.0" },
@@ -512,7 +512,7 @@ wheels = [
 
 [[package]]
 name = "dcc-backend-common"
-version = "0.1.23"
+version = "0.1.24"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datasets" },
@@ -521,9 +521,9 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "structlog" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/19/75/3e95ccb1c9c698efc0a97f3f9d7ac49bd4b234ace27215b440cdf4dd2bfb/dcc_backend_common-0.1.23.tar.gz", hash = "sha256:4f771c6d63028d991b3d807e75c0c2220ef3e6c736bd869c086cad363f7a669f", size = 257533, upload-time = "2026-08-21T15:19:33.537Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/37/66/7cca67cac05f5042b6093ddc08afb1b40b999e060d2d20fca000374a569b/dcc_backend_common-0.1.24.tar.gz", hash = "sha256:011bac731a827ae9f2d554500b55205cf67c996c54a058c498ed2aad9d605295", size = 270945, upload-time = "2026-11-16T21:14:39.968Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/b6/87d491fe5c485b1c82b5efec08f56a634ae80068635fd34218c37ecf6ace/dcc_backend_common-0.1.23-py3-none-any.whl", hash = "sha256:b458593c21709e226085be5cc9498e6a2e07f1fae15524b3dc9e1a3ef36f95ac", size = 39785, upload-time = "2026-08-21T15:19:32.475Z" },
+    { url = "https://files.pythonhosted.org/packages/7a/57/21d2263535298c3653894bbf55a20bd4b47060e8636dd7268027604612ad/dcc_backend_common-0.1.24-py3-none-any.whl", hash = "sha256:1d168094af5a1a37f9695dad008d5d91b3156b1f0fea4bf1ba0fda95a32fd804", size = 39809, upload-time = "2026-11-16T21:14:38.702Z" },
 ]
 
 [package.optional-dependencies]
@@ -532,9 +532,9 @@ fastapi = [
     { name = "fastapi" },
 ]
 pydantic-ai = [
-    { name = "httpx" },
+    { name = "httpx2" },
     { name = "pydantic-ai" },
-    { name = "pydantic-ai-slim", extra = ["openai"] },
+    { name = "pydantic-ai-slim", extra = ["openai", "retries"] },
     { name = "tenacity" },
 ]
 
@@ -1959,6 +1959,10 @@ mcp = [
 openai = [
     { name = "openai" },
     { name = "tiktoken" },
+]
+retries = [
+    { name = "httpx" },
+    { name = "tenacity" },
 ]
 web = [
     { name = "starlette" },
