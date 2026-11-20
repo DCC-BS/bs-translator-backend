@@ -58,7 +58,12 @@ async def _block_translation_stream(
                     return
                 yield _ndjson(event)
         except ApiErrorException as e:
-            logger.warning("Block translation failed mid-stream", error=e.error_response)
+            logger.warning(
+                "Block translation failed mid-stream",
+                error_id=e.error_response.get("errorId"),
+                status_code=int(e.error_response.get("status", 500)),
+                debug_message=str(e.error_response.get("debugMessage") or "")[:500],
+            )
             yield _ndjson(
                 BlockTranslationErrorEvent(
                     errorId=e.error_response.get("errorId", UNEXPECTED_ERROR),

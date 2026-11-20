@@ -90,7 +90,9 @@ class TranscriptionService:
         if language != DetectLanguage.AUTO:
             whisper_code = transform_language_code_for_whisper(language.value.strip())
             if whisper_code is None:
-                logger.debug("Language %s is not supported by Whisper, using auto", language.value)
+                logger.debug(
+                    "Language is not supported by Whisper, using auto", language=language.value
+                )
             else:
                 data["language"] = whisper_code
         else:
