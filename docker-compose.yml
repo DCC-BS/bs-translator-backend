@@ -1,7 +1,7 @@
 services:
   vllm_gemma4:
     platform: linux/amd64
-    image: vllm/vllm-openai:v0.32.0
+    image: vllm/vllm-openai:v0.33.0
     container_name: vllm_gemma
     ports:
       - ${LLM_API_PORT}:8000
@@ -112,7 +112,7 @@ services:
   # vLLM serving GLM-OCR for docling-serve's remote OCR (photo translation)
   vllm-glm-ocr:
     platform: linux/amd64
-    image: vllm/vllm-openai:v0.32.0
+    image: vllm/vllm-openai:v0.33.0
     container_name: vllm-glm-ocr-translator
     ports:
       - "${OCR_API_PORT:-8005}:8000"
